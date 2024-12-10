@@ -17,7 +17,7 @@
     "electron-dev": "npm run build && npm run start ",
     "win-build": "electron-builder"
   },
-  
+
   "build": {
     "appId": "com.mslelearning.msl",        
     "productName": "MSL Desktop",          
@@ -31,8 +31,11 @@
       "electron/**/*"
     ],
     "win": {
-      "target": ["nsis", "portable"]
+      "target": ["nsis", "portable"],
+      "certificateFile": "path/to/your/cert.pfx",
+      "certificatePassword": ""
     },
+    
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
