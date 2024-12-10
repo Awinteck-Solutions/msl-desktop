@@ -2,6 +2,59 @@ import axios from "axios";
 import apiEndpoints from "./apiConfig";
 
 
+
+
+//  Windows login
+export const generateQRCode = async (data) => {
+  try {
+    const response = await axios.post(
+      apiEndpoints.generateQRCode,
+      data
+    );
+    if (response.status == 201) {
+      return {
+        status: true,
+        response: response.data,
+      };
+    } else if (response.status == 404) {
+      return {
+        status: true,
+        message: response.data.msg,
+      };
+    } else {
+      return null;
+    }
+  } catch (error) {
+    throw error;
+  }
+}; 
+
+//  Windows login
+export const windowsLogin = async (data) => {
+  try {
+    const response = await axios.get(
+      `${apiEndpoints.windowLogin}/${data}`
+    );
+    if (response.status == 201) {
+      return {
+        status: true,
+        response: response.data,
+      };
+    } else if (response.status == 404) {
+      return {
+        status: true,
+        message: response.data.msg,
+      };
+    } else {
+      return null;
+    }
+  } catch (error) {
+    throw error;
+  }
+}; 
+
+
+
 //  LOGIN
 export const login = async (data) => {
     try {

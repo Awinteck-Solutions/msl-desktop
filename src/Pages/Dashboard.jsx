@@ -2,13 +2,15 @@ import { Button, InputGroup, InputLeftElement, Input, Spinner} from "@chakra-ui/
 import SideBar from "../Components/General/SideBar";
 import Item from "../Components/Course/Item";
 import ItemView from "../Components/Course/ItemView";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { courseList, userCourseList } from "../Services/CourseApi";
 import { useEffect, useState } from "react";
 
 
 
-const Dashboard = () => {
+
+const Dashboard = () => {    
+    const navigator = useNavigate()
     
     const [isLoadingCourse, setLoadingCourse] = useState(true);
     const [isLoading, setLoading] = useState(true);
@@ -38,7 +40,11 @@ const Dashboard = () => {
     }
 
     const getMyCoursesCall = () => {
-        userCourseList('awinsamp@yahoo.com').then((response) => {
+        let user = localStorage.getItem('user')
+        let formatUser = JSON.parse(user) 
+        console.log('formated user email', formatUser.email);
+        
+        userCourseList(formatUser.email).then((response) => {
             setMycourses(response.response);
 
             setLoading(false)
@@ -66,8 +72,19 @@ const Dashboard = () => {
     
     
     useEffect(() => {
-        getMyCoursesCall()
-        getCoursesCall()
+        let user = localStorage.getItem('user')
+        if (user !== null && user != undefined) { 
+            console.log('ALLOWED-LOGIN STILL')
+            getMyCoursesCall()
+            getCoursesCall()
+        } else {  
+            console.log('ALLOWED-LOGIN STILL NOT')
+            navigator('/login')
+        }
+
+        // console.log('window', window.electronAPI.test)
+        // window.electronAPI.sendData('dashboard', 'dashboard test')
+       
     }, [])
     
 

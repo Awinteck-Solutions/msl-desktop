@@ -55,7 +55,7 @@ const Feedback = () => {
                         />
                     </div>
                         :
-                        <div className='lg:m-auto mx-5 space-y-2 bg-white lg:p-5 rounded'>
+                        <div className='lg:m-auto mx-5 space-y-2 bg-white lg:p-5 rounded min-w-[450px]'>
                             {statusShow? <p className='bg-blue-800 text-white p-2 w-fit m-auto rounded'> { statusMessage} </p>: ''}
                         <div className='lg:grid grid-cols-2 gap-3 lg:space-y-0 space-y-2'>
                             <div className='text-black'>

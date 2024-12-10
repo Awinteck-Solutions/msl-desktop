@@ -6,7 +6,7 @@ import {
     AccordionItem,
     AccordionButton,Divider,
     AccordionPanel,Box,
-    AccordionIcon,
+    AccordionIcon,Spinner,
   } from '@chakra-ui/react'
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { singleCourse } from "../Services/CourseApi";
@@ -17,6 +17,11 @@ const PreviewCourse = () => {
     console.log('id', id)
     const [data, setData] = useState({});
     const navigator = useNavigate()
+
+
+
+    const [downloadedList, setDownloadedList] = useState([])
+
 
     const [isLoading, setIsLoading] = useState(true)
     const [selected, setSelected] = useState(true)
@@ -65,60 +70,148 @@ const PreviewCourse = () => {
     
     useEffect(() => {
         previewCourseCall()
+
+        window.electronAPI.sendData('getDownloadedList', null);
+       
+        window.electronAPI.receiveData('downloadedList', (receivedData) => {
+            console.log('downloadedList', receivedData);
+            setDownloadedList(receivedData)
+          });
+
+        
     },[])
 
     const VideoItem = ({ link, number, downloaded = false, selected=false }) => { 
     
-        const onTap = ()=>{ 
+        const onTap = ()=>{
              switch(number){ 
                  case 1:
                      console.log(link);
-                     selectedVideo.video = link;
+                     if (downloaded) {
+                         console.log('------------------INTERCEPT URL VIDEO-------------------')
+                         console.log('selectedVideo.video :>> ', link);
+                         window.electronAPI.sendData('decrypt', link)
+                         window.electronAPI.receiveData('getDecrypt', (receivedData) => {
+                            console.log('getDecrypt', receivedData);
+                             selectedVideo.video = receivedData
+                             setPlayVideo(receivedData)
+                          });
+                     }
+                     else {
+                         selectedVideo.video = link;
+                         setPlayVideo(`https://mslbucket.s3.us-east-1.amazonaws.com/${link}`)
+                     }
+                       
                      break;
                  case 2:
                      console.log(link);
-                     selectedVideo.video1 = link;
+                     if (downloaded) {
+                        console.log('------------------INTERCEPT URL VIDEO-------------------')
+                        console.log('selectedVideo.video :>> ', link);
+                        window.electronAPI.sendData('decrypt', link)
+                        window.electronAPI.receiveData('getDecrypt', (receivedData) => {
+                           console.log('getDecrypt', receivedData);
+                            selectedVideo.video1 = receivedData
+                            setPlayVideo(receivedData)
+                         });
+                    }
+                    else {
+                        selectedVideo.video = link;
+                        setPlayVideo(`https://mslbucket.s3.us-east-1.amazonaws.com/${link}`)
+                    }
                      break;
                  case 3:
                      console.log(link);
-                     selectedVideo.video2 = link;
+                     if (downloaded) {
+                        console.log('------------------INTERCEPT URL VIDEO-------------------')
+                        console.log('selectedVideo.video :>> ', link);
+                        window.electronAPI.sendData('decrypt', link)
+                        window.electronAPI.receiveData('getDecrypt', (receivedData) => {
+                           console.log('getDecrypt', receivedData);
+                            selectedVideo.video2 = receivedData
+                            setPlayVideo(receivedData)
+                         });
+                    }
+                    else {
+                        selectedVideo.video = link;
+                        setPlayVideo(`https://mslbucket.s3.us-east-1.amazonaws.com/${link}`)
+                    }
                      break;
                  case 4:
                      console.log(link);
-                     selectedVideo.video3 = link;
+                     if (downloaded) {
+                        console.log('------------------INTERCEPT URL VIDEO-------------------')
+                        console.log('selectedVideo.video :>> ', link);
+                        window.electronAPI.sendData('decrypt', link)
+                        window.electronAPI.receiveData('getDecrypt', (receivedData) => {
+                           console.log('getDecrypt', receivedData);
+                            selectedVideo.video3 = receivedData
+                            setPlayVideo(receivedData)
+                         });
+                    }
+                    else {
+                        selectedVideo.video = link;
+                        setPlayVideo(`https://mslbucket.s3.us-east-1.amazonaws.com/${link}`)
+                    }
                      break;
                  case 5:
                      console.log(link);
-                     selectedVideo.video4 = link;
+                     if (downloaded) {
+                        console.log('------------------INTERCEPT URL VIDEO-------------------')
+                        console.log('selectedVideo.video :>> ', link);
+                        window.electronAPI.sendData('decrypt', link)
+                        window.electronAPI.receiveData('getDecrypt', (receivedData) => {
+                           console.log('getDecrypt', receivedData);
+                            selectedVideo.video4 = receivedData
+                            setPlayVideo(receivedData)
+                         });
+                    }
+                    else {
+                        selectedVideo.video = link;
+                        setPlayVideo(`https://mslbucket.s3.us-east-1.amazonaws.com/${link}`)
+                    }
                      break;
                  default:
                      console.log('default')
                      break;
              }
             setSelectedVideo(selectedVideo)
-            setPlayVideo(link)
+        
          }
          
      
          return <>
               <div className={selected ? 'cursor-pointer bg-blue-400 duration-300 my-1':'cursor-pointer bg-gray-50 hover:bg-gray-100 duration-300 my-1'}>
-                         <div onClick={() => {
-                                onTap()
-                     }}>
-                         <div className={'flex  space-x-1 p-3 items-center justify-between text-[12px] bg-gray-200 rounded'}>
-                                 <div className="flex items-center space-x-1">
+                         <div>
+                     <div
+                         onClick={() => {
+                            onTap()
+                         }}
+                         className={'flex  space-x-1 items-center justify-between text-[12px] bg-gray-200 rounded'}>
+                        <div className="flex items-center space-x-1 h-full w-full p-3 rounded">
                                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-4">
                                          <path strokeLinecap="round" strokeLinejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" />
                                      </svg>
      
                              <span className=''>Play lesson { number }</span>
-                                             
-                             </div>
-                                 <div>
-                                     {!downloaded ?
-                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-4">
-                                     <path strokeLinecap="round" strokeLinejoin="round" d="m9 12.75 3 3m0 0 3-3m-3 3v-7.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                                     </svg>
+                              
+                         </div>
+                         
+                                 <div className="p-3">
+                                     {!downloaded ? 
+                                 <span className=""
+                                     onClick={() => {
+                                         window.electronAPI.sendData('download',
+                                             {
+                                                 url: `https://mslbucket.s3.us-east-1.amazonaws.com/${link}`,
+                                                 filename: link?.split('/')[1]
+                                             }) 
+                                         
+                                 }     }>
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-4">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="m9 12.75 3 3m0 0 3-3m-3 3v-7.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                        </svg>
+                                     </span>
                                          :
                                          <span className="text-green-600">
                                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-4">
@@ -137,42 +230,106 @@ const PreviewCourse = () => {
             switch(number){ 
                 case 1:
                     console.log(link);
-                    selectedVideo.pdf = link;
+                    
+                    if (downloaded) {
+                        console.log('------------------INTERCEPT URL PDF-------------------')
+                        window.electronAPI.sendData('decrypt', link)
+                        window.electronAPI.receiveData('getDecrypt', (receivedData) => {
+                           console.log('getDecrypt', receivedData);
+                           selectedVideo.pdf = receivedData
+                            navigator(`/preview/pdf/${id}`, { state: receivedData });
+                         });
+                    }
+                    else {
+                        navigator(`/preview/pdf/${id}`, { state: link});
+                        selectedVideo.pdf = link;
+                    }
                     break;
                 case 2:
                     console.log(link);
-                    selectedVideo.pdf1 = link;
+                    if (downloaded) {
+                        console.log('------------------INTERCEPT URL PDF-------------------')
+                        window.electronAPI.sendData('decrypt', link)
+                        window.electronAPI.receiveData('getDecrypt', (receivedData) => {
+                           console.log('getDecrypt', receivedData);
+                           selectedVideo.pdf1 = receivedData
+                            navigator(`/preview/pdf/${id}`, { state: receivedData });
+                         });
+                    }
+                    else {
+                        navigator(`/preview/pdf/${id}`, { state: link});
+                        selectedVideo.pdf1 = link;
+                    }
                     break;
                 case 3:
                     console.log(link);
-                    selectedVideo.pdf2 = link;
+                    if (downloaded) {
+                        console.log('------------------INTERCEPT URL PDF-------------------')
+                        window.electronAPI.sendData('decrypt', link)
+                        window.electronAPI.receiveData('getDecrypt', (receivedData) => {
+                           console.log('getDecrypt', receivedData);
+                           selectedVideo.pdf2 = receivedData
+                            navigator(`/preview/pdf/${id}`, { state: receivedData });
+                         });
+                    }
+                    else {
+                        navigator(`/preview/pdf/${id}`, { state: link});
+                        selectedVideo.pdf2 = link;
+                    }
                     break;
                 case 4:
                     console.log(link);
-                    selectedVideo.pdf3 = link;
+                    if (downloaded) {
+                        console.log('------------------INTERCEPT URL PDF-------------------')
+                        window.electronAPI.sendData('decrypt', link)
+                        window.electronAPI.receiveData('getDecrypt', (receivedData) => {
+                           console.log('getDecrypt', receivedData);
+                           selectedVideo.pdf3 = receivedData
+                            navigator(`/preview/pdf/${id}`, { state: receivedData });
+                         });
+                    }
+                    else {
+                        navigator(`/preview/pdf/${id}`, { state: link});
+                        selectedVideo.pdf3 = link;
+                    }
                     break;
                 case 5:
                     console.log(link);
-                    selectedVideo.pdf4 = link;
+                    if (downloaded) {
+                        console.log('------------------INTERCEPT URL PDF-------------------')
+                        window.electronAPI.sendData('decrypt', link)
+                        window.electronAPI.receiveData('getDecrypt', (receivedData) => {
+                           console.log('getDecrypt', receivedData);
+                           selectedVideo.pdf4 = receivedData
+                            navigator(`/preview/pdf/${id}`, { state: receivedData });
+                         });
+                    }
+                    else {
+                        navigator(`/preview/pdf/${id}`, { state: link});
+                        selectedVideo.pdf4 = link;
+                    }
                     break;
                 default:
                     console.log('default')
                     break;
             }
             console.log('link :>> ', link);
-            navigator('/preview/pdf', { state: link});
+            // navigator('/preview/pdf', { state: link});
            setSelectedVideo(selectedVideo)
         }
+
 
         return <>
             <div className='cursor-pointer bg-gray-50 text-[12px] hover:bg-gray-100 duration-300'>
                 <div
-                    onClick={() => {
-                        onTap()
-                    }}
+                 
                 >
-                    <div className={'flex  space-x-1 p-3 items-center justify-between text-[12px] bg-gray-200 rounded'}>
-                                 <div className="flex items-center space-x-1">
+                    <div
+                           onClick={() => {
+                            onTap()
+                        }}
+                        className={'flex  space-x-1 items-center justify-between text-[12px] bg-gray-200 rounded'}>
+                                 <div className="flex items-center space-x-1 h-full w-full p-3 rounded">
                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-4">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
                                     </svg>
@@ -181,11 +338,21 @@ const PreviewCourse = () => {
                              <span className=''>Read Lesson Slide { number }</span>
                                              
                              </div>
-                                 <div>
-                                     {!downloaded ?
-                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-4">
-                                     <path strokeLinecap="round" strokeLinejoin="round" d="m9 12.75 3 3m0 0 3-3m-3 3v-7.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                                     </svg>
+                                 <div className="p-3">
+                                 {!downloaded ? 
+                                 <span className=""
+                                     onClick={() => {
+                                         window.electronAPI.sendData('download',
+                                             {
+                                                 url: `https://mslbucket.s3.us-east-1.amazonaws.com/${link}`,
+                                                 filename: link?.split('/')[1]
+                                             }) 
+                                         
+                                 }     }>
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-4">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="m9 12.75 3 3m0 0 3-3m-3 3v-7.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                        </svg>
+                                     </span>
                                          :
                                          <span className="text-green-600">
                                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-4">
@@ -201,6 +368,20 @@ const PreviewCourse = () => {
         </>
     }
 
+
+
+    const isDownloadedFunc = (variable) => {
+        return downloadedList.filter((value) => {
+            let arg = value.split('.')
+            let filename = `${arg[0]}.${arg[1]}` 
+            let newVar = variable.split('/')[1]
+            if (filename == newVar) return true
+            else false
+        }).length == 0? false: true
+    }
+
+
+    
     return <>
     <div className="flex gap-1 ">
         <div className="min-w-[300px]">
@@ -228,7 +409,7 @@ const PreviewCourse = () => {
                             className="bg-green-400 w-full" 
                             controls
                             controlsList="nodownload"
-                            src={`https://mslbucket.s3.us-east-1.amazonaws.com/${playVideo}`}>
+                            src={`${playVideo}`}>
                         </video>
                 }
                     
@@ -257,7 +438,7 @@ const PreviewCourse = () => {
                                             
                                             : ''}
                                         
-                                        {data?.lessons?.map((item,id) => {
+                                        {data?.lessons?.map((item, id) => { 
                                             return <AccordionItem key={id}>
                                             <h2>
                                               <AccordionButton>
@@ -269,12 +450,13 @@ const PreviewCourse = () => {
                                             </h2>
                                             <AccordionPanel pb={4}>
                                                 <div>
-                                                {item?.video != null ?
+                                                        {item?.video != null ?
+                                                            
                                                         <div>
                                                                 <VideoItem
                                                                     selected={false}
                                                                     number={1}
-                                                                    downloaded={downloaded.video}
+                                                                    downloaded={isDownloadedFunc(item?.video)}
                                                                     link={item?.video} />
                                                         </div>
                                                 : ''}
@@ -286,7 +468,7 @@ const PreviewCourse = () => {
                                              <VideoItem
                                                  selected={false}
                                                  number={2}
-                                                 downloaded={downloaded.video1}
+                                                 downloaded={isDownloadedFunc(item?.video1)}
                                                  link={item?.video1} />
                                      </div>
                                                             : ''}
@@ -298,7 +480,7 @@ const PreviewCourse = () => {
                                              <VideoItem
                                                  selected={false}
                                                  number={1}
-                                                 downloaded={downloaded.video2}
+                                                 downloaded={isDownloadedFunc(item?.video2)}
                                                  link={item?.video2} />
                                      </div>
                                                             : ''}
@@ -310,7 +492,7 @@ const PreviewCourse = () => {
                                             <VideoItem
                                                 selected={false}
                                                 number={1}
-                                                downloaded={downloaded.video3}
+                                                downloaded={isDownloadedFunc(item?.vide3)}
                                                 link={item?.video3} />
                                     </div>
                                                             : ''}
@@ -322,7 +504,7 @@ const PreviewCourse = () => {
                                              <VideoItem
                                                  selected={false}
                                                  number={1}
-                                                 downloaded={downloaded.video4}
+                                                 downloaded={isDownloadedFunc(item?.video4)}
                                                  link={item?.video4} />
                                      </div>
                                                             : ''}
@@ -334,7 +516,7 @@ const PreviewCourse = () => {
                                              <PdfItem
                                                  selected={false}
                                                  number={1}
-                                                 downloaded={downloaded.pdf}
+                                                 downloaded={isDownloadedFunc(item?.pdf)}
                                                  link={item?.pdf} />
                                             </div>
                                                 : ''}
@@ -346,7 +528,7 @@ const PreviewCourse = () => {
                                                             <PdfItem
                                                                 selected={false}
                                                                 number={2}
-                                                                downloaded={downloaded.pdf1}
+                                                                downloaded={isDownloadedFunc(item?.pdf1)}
                                                                 link={item?.pdf1} />
                                                             </div>
                                                 : ''}
@@ -358,7 +540,7 @@ const PreviewCourse = () => {
                                                         <PdfItem
                                                             selected={false}
                                                             number={3}
-                                                            downloaded={downloaded.pdf2}
+                                                            downloaded={isDownloadedFunc(item?.pdf2)}
                                                             link={item?.pdf2} />
                                                         </div>
                                                 : ''}
@@ -370,7 +552,7 @@ const PreviewCourse = () => {
                                                             <PdfItem
                                                                 selected={false}
                                                                 number={4}
-                                                                downloaded={downloaded.pdf3}
+                                                                downloaded={isDownloadedFunc(item?.pdf3)}
                                                                 link={item?.pdf3} />
                                                         </div>
                                                 : ''}
@@ -382,7 +564,7 @@ const PreviewCourse = () => {
                                                             <PdfItem
                                                                 selected={false}
                                                                 number={5}
-                                                                downloaded={downloaded.pdf4}
+                                                                downloaded={isDownloadedFunc(item?.pdf4)}
                                                                 link={item?.pdf4} />
                                                         </div>
                                                 : ''}

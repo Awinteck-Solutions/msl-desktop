@@ -22,7 +22,7 @@ function App() {
         <Route path="/personal/course" element={<MyCourses />} />
         <Route path="*" element={<Dashboard />} />
         <Route path="/course/preview/:id" element={<PreviewCourse />} />
-        <Route path="/preview/pdf/" element={<PreviewPdf />} />
+        <Route path="/preview/pdf/:id" element={<PreviewPdf />} />
         <Route path="/feedback" element={<Feedback />} />
 
       </Routes>

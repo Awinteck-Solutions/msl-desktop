@@ -1,5 +1,5 @@
 import SideBar from "../Components/General/SideBar";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { PDFReader } from 'reactjs-pdf-reader';
 
 import '@react-pdf-viewer/core/lib/styles/index.css';
@@ -12,9 +12,11 @@ import { useState } from "react";
 
 
 const PreviewPdf = () => { 
+    let { id } = useParams();
     const location = useLocation();
     let { state } = location
     console.log('link', state)
+    const navigator = useNavigate()
 
     let file = state.split('/')
     let pdfFile = file[file.length - 1];
@@ -71,8 +73,15 @@ const PreviewPdf = () => {
     return (
         // <div className='text-base' onContextMenu={(e) => e.preventDefault()}>
 
-        <div >
+        <div className="flex gap-1 ">
+             <div className="min-w-[300px]">
+            <SideBar mycourse={ true } />
+        </div>
             
+            <div className="w-full bg-gray-50">
+                <button onClick={()=> navigator(`/course/preview/${id}`)}>
+                    Go Back
+                </button>
             <div className="flex justify-around ">
                 <div className='flex flex-wrap justify-between space-x-2 items-center w-fit hidden lg:inline-flex'>
                     <div
@@ -92,7 +101,7 @@ const PreviewPdf = () => {
                 <p className='p-2 font-medium'>Page {1}/ {pageNumber}</p>
             </div>
 
-        <Worker  workerUrl="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js">
+             <Worker  workerUrl="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js">
                 
                  <div
                     style={{
@@ -119,8 +128,7 @@ const PreviewPdf = () => {
                         </div>
             </Worker>
             
-           
-           
+        </div>
         </div>
     )
 

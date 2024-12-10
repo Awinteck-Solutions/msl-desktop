@@ -7,6 +7,9 @@ const apiEndpoints = {
     bucketUrl,
     cdnUrl,
     // USERS
+
+    generateQRCode: baseUrl + '/windows/code/generate',
+    windowLogin: baseUrl + '/windows/code/login',
     login: baseUrl + "/user/login",
     google_auth: baseUrl + "/user/auth",
     verify : baseUrl + '/user/verify/device',

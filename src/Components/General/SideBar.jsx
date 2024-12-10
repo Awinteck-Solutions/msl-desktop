@@ -1,7 +1,19 @@
-import { Link } from "react-router-dom"
+import { useEffect } from "react"
+import { Link, useNavigate } from "react-router-dom"
 
 
 const SideBar = ({dashboard, mycourse, course, feedback, help, logout}) => {
+    const navigator = useNavigate();
+    let user = localStorage.getItem('user')
+
+    useEffect(() => {
+        if (user !== null && user != undefined) { 
+            console.log('ALLOWED-LOGIN STILL')
+        } else {  
+            console.log('ALLOWED-LOGIN STILL NOT')
+            navigator('/login')
+        }
+      }, [])
 
     return <>
         <div className="border-r border-gray-100 h-full min-h-dvh bg-gray-50 relative ">

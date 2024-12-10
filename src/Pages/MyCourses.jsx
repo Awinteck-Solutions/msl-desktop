@@ -19,7 +19,10 @@ const MyCourses = () => {
     // ---------------------API CALLS--------------------------//
 
     const getMyCoursesCall = () => {
-        userCourseList('awinsamp@yahoo.com').then((response) => {
+        let user = localStorage.getItem('user')
+        let formatUser = JSON.parse(user) 
+        console.log('formated user email', formatUser.email);
+        userCourseList(formatUser.email).then((response) => {
             setMycourses(response.response);
 
             setLoading(false)
