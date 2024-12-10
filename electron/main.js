@@ -4,6 +4,7 @@ const url = require('url')
 const crypto = require('crypto');
 const axios = require('axios');
 const fs = require('fs')
+const { autoUpdater } = require("electron-updater");
 
 let win;
 const creatWindow = () => {
@@ -193,7 +194,15 @@ app.whenReady().then(() => {
     createFolderIfNotExists(encryptFolderPath)
     createFolderIfNotExists(tempFolderPath)
    
-   
+    autoUpdater.checkForUpdatesAndNotify();
+
+    autoUpdater.on("update-available", () => {
+      console.log("Update available!");
+    });
+
+    autoUpdater.on("update-downloaded", () => {
+      autoUpdater.quitAndInstall();
+    });
 
     //---------- Send data to the renderer process after 2 seconds
     setTimeout(() => {
@@ -216,12 +225,13 @@ app.whenReady().then(() => {
         // Handle the received data here
     });
     
-    ipcMain.on('download', (event, data) => {
+  ipcMain.on('download', (event, data) => {
+    showDownloadStartedNotification(data.filename)
         console.log('-------------------DOWNLOADER:', data);
         downloadFile(data.url, `${downloadFolderPath}/${data.filename}`).then((outputPath) => {
             console.log('File downloaded to:', outputPath);
             win.webContents.send('download-complete', outputPath);
-            showDownloadStartedNotification(data.filename)
+           
             encryptFile(outputPath, `${encryptFolderPath}/${data.filename}.enc`);
             showDownloadSuccessDialog()
 
