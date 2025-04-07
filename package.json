@@ -1,0 +1,102 @@
+{
+  "name": "msl",
+  "private": true,
+  "version": "1.2.1",
+  "type": "commonjs",
+  "main": "electron/main.js",
+  "author": "MSL",
+  "description": "Desktop for MSL",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "start": "electron-forge start",
+    "make": "electron-forge make",
+    "electron-dev": "npm run build && npm run start",
+    "package": "electron-builder --dir",
+    "dist": "electron-builder",
+    "publish": "electron-builder -p always"
+  },
+  "build": {
+    "appId": "com.mslelearning.msl",
+    "productName": "MSL",
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "./assets/mslogo.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true
+    }
+  },
+  "electron-forge": {
+    "makers": [
+      {
+        "name": "@electron-forge/maker-nsis",
+        "config": {
+          "oneClick": false,
+          "allowToChangeInstallationDirectory": true,
+          "createDesktopShortcut": "always",
+          "createStartMenuShortcut": true,
+          "shortcutName": "MSL"
+        }
+      }
+    ]
+  },
+  "dependencies": {
+    "@chakra-ui/icons": "^2.1.1",
+    "@chakra-ui/react": "^2.8.2",
+    "@emotion/react": "^11.11.4",
+    "@emotion/styled": "^11.11.5",
+    "@react-pdf-viewer/core": "^3.12.0",
+    "@react-pdf-viewer/default-layout": "^3.12.0",
+    "animate.css": "^4.1.1",
+    "axios": "^1.7.7",
+    "concurrently": "^9.1.0",
+    "crypto": "^1.0.1",
+    "electron-log": "^5.2.4",
+    "electron-squirrel-startup": "^1.0.1",
+    "framer-motion": "^10.16.4",
+    "jwt-decode": "^4.0.0",
+    "lucide-react": "^0.438.0",
+    "pdfjs-dist": "^3.11.174",
+    "qrcode": "^1.5.4",
+    "qrcode.react": "^4.1.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0",
+    "wait-on": "^8.0.1"
+  },
+  "devDependencies": {
+    "@electron-forge/cli": "^7.5.0",
+    "@electron-forge/maker-deb": "^7.5.0",
+    "@electron-forge/maker-rpm": "^7.5.0",
+    "@electron-forge/maker-squirrel": "^7.7.0",
+    "@electron-forge/maker-wix": "^7.6.0",
+    "@electron-forge/maker-zip": "^7.7.0",
+    "@electron-forge/plugin-auto-unpack-natives": "^7.5.0",
+    "@electron-forge/plugin-fuses": "^7.5.0",
+    "@electron/fuses": "^1.8.0",
+    "@eslint/js": "^9.13.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.3",
+    "autoprefixer": "^10.4.20",
+    "electron": "33.2.0",
+    "electron-builder": "^25.1.8",
+    "eslint": "^9.13.0",
+    "eslint-plugin-react": "^7.37.2",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "eslint-plugin-react-refresh": "^0.4.14",
+    "globals": "^15.11.0",
+    "postcss": "^8.4.48",
+    "tailwindcss": "^3.4.14",
+    "vite": "^5.4.10"
+  }
+}
