@@ -1,1 +1,1 @@
-# MLS elearning Windows app
+# MLS e-learning Windows app
