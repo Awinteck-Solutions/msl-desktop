@@ -304,6 +304,22 @@ const PreviewCourse = () => {
 
     const PdfItem = ({ link, number, downloaded = false, selected = false }) => {
         const onTap = () => {
+            if (downloaded) {
+                console.log('------------------INTERCEPT URL PDF-------------------')
+                window.electronAPI.sendData('decrypt-pdf', link)
+                window.electronAPI.receiveData('getDecrypt-pdf', (receivedData) => {
+                    console.log('getDecrypt pdf 1', receivedData); 
+                    navigator(`/preview/pdf/${id}`, { state:{data:receivedData, online:false}, type: 'pdf' });
+                });
+                console.log('~~DOWNLOADED...', number)
+            }
+            else {
+                console.log('NOT DOWNLOADED...', number)
+                navigator(`/preview/pdf/${id}`, { state: {data:link, online:true}, type: 'pdf' }); 
+            }
+        }
+
+        const onTapOld = () => {
             switch (number) {
                 case 1:
                     console.log(link);
@@ -332,13 +348,13 @@ const PreviewCourse = () => {
                         window.electronAPI.receiveData('getDecrypt', (receivedData) => {
                             console.log('getDecrypt pdf 2', receivedData);
                             selectedVideo.pdf1 = receivedData
-                            navigator(`/preview/pdf/${id}`, { state: receivedData, type: 'pdf' });
+                            navigator(`/preview/pdf/${id}`, { state:{data:receivedData, online:false}, type: 'pdf' });
                         });
                         console.log('~~DOWNLOADED...', number)
                     }
                     else {
                         console.log('NOT DOWNLOADED...', number)
-                        navigator(`/preview/pdf/${id}`, { state: link, type: 'pdf' });
+                        navigator(`/preview/pdf/${id}`, { state:{data:receivedData, online:false}, type: 'pdf' });
                         selectedVideo.pdf1 = link;
                     }
                     break;
@@ -350,13 +366,13 @@ const PreviewCourse = () => {
                         window.electronAPI.receiveData('getDecrypt', (receivedData) => {
                             console.log('getDecrypt pdf 3', receivedData);
                             selectedVideo.pdf2 = receivedData
-                            navigator(`/preview/pdf/${id}`, { state: receivedData, type: 'pdf' });
+                            navigator(`/preview/pdf/${id}`, { state:{data:receivedData, online:false}, type: 'pdf' });
                         });
                         console.log('~~DOWNLOADED...', number)
                     }
                     else {
                         console.log('NOT DOWNLOADED...', number)
-                        navigator(`/preview/pdf/${id}`, { state: link, type: 'pdf' });
+                         navigator(`/preview/pdf/${id}`, { state: {data:link, online:true}, type: 'pdf' });
                         selectedVideo.pdf2 = link;
                     }
                     break;
@@ -368,13 +384,13 @@ const PreviewCourse = () => {
                         window.electronAPI.receiveData('getDecrypt', (receivedData) => {
                             console.log('getDecrypt pdf 4', receivedData);
                             selectedVideo.pdf3 = receivedData
-                            navigator(`/preview/pdf/${id}`, { state: receivedData, type: 'pdf' });
+                            navigator(`/preview/pdf/${id}`, { state:{data:receivedData, online:false}, type: 'pdf' });
                         });
                         console.log('~~DOWNLOADED...', number)
                     }
                     else {
                         console.log('NOT DOWNLOADED...', number)
-                        navigator(`/preview/pdf/${id}`, { state: link, type: 'pdf' });
+                         navigator(`/preview/pdf/${id}`, { state: {data:link, online:true}, type: 'pdf' });
                         selectedVideo.pdf3 = link;
                     }
                     break;
@@ -386,13 +402,13 @@ const PreviewCourse = () => {
                         window.electronAPI.receiveData('getDecrypt', (receivedData) => {
                             console.log('getDecrypt pdf 5', receivedData);
                             selectedVideo.pdf4 = receivedData
-                            navigator(`/preview/pdf/${id}`, { state: receivedData, type: 'pdf' });
+                            navigator(`/preview/pdf/${id}`, { state:{data:receivedData, online:false}, type: 'pdf' });
                         });
                         console.log('~~DOWNLOADED...', number)
                     }
                     else {
                         console.log('NOT DOWNLOADED...', number)
-                        navigator(`/preview/pdf/${id}`, { state: link, type: 'pdf' });
+                         navigator(`/preview/pdf/${id}`, { state: {data:link, online:true}, type: 'pdf' });
                         selectedVideo.pdf4 = link;
                     }
                     break;

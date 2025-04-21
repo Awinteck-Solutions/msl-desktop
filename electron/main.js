@@ -32,7 +32,7 @@ const creatWindow = () => {
     console.log('appPath :> ', appPath, urlPath);
     win.loadFile(appPath);
 
-    win.webContents.openDevTools();
+    // win.webContents.openDevTools();
 };
 
 const template = [];
