@@ -10,6 +10,7 @@ import { Modal,
 import { useEffect, useState } from "react";
 import { QRCodeSVG } from 'qrcode.react'
 import { useNavigate } from "react-router-dom";
+import { currentVersion } from "../version";
 
 const Login = () => {
     const navigator = useNavigate();
@@ -100,6 +101,8 @@ const Login = () => {
                             className="bg-blue-700 hover:bg-blue-800 duration-200 w-full p-2 mt-6 rounded text-white"> Login </button>
                 </div>
                 <p className="text-center text-red-600 text-sm font-bold">NB:You require the mobile app to login</p>
+
+                <p className="text-md text-gray-700 my-3 text-center">Version {currentVersion}</p>
                 </div>         
             }
     <div>

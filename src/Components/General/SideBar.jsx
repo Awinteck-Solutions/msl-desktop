@@ -4,8 +4,9 @@ import { verify } from "../../Services/UserApi";
 import { Progress, useDisclosure } from '@chakra-ui/react'
 import { Modal, ModalOverlay, ModalContent, ModalHeader, ModalCloseButton, ModalBody, ModalFooter, Button } from '@chakra-ui/react';
 import { updateAvailableCall } from "../../Services/ExtraApi";
+import { currentVersion } from "../../version";
 
-const currentVersion = "1.2.1"
+
 const SideBar = ({ dashboard, mycourse, course, feedback, help, logout }) => {
     const navigator = useNavigate();
     let user = localStorage.getItem('user')
