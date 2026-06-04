@@ -24,3 +24,22 @@ dist-ssr
 *.sw?
 
 out/
+out
+
+cert.pem
+cert.pfx
+key.pem
+
+# Electron build output
+out/
+dist/
+release/
+
+# Installers
+*.exe
+*.msi
+*.nupkg
+*.zip
+
+# Logs
+*.log

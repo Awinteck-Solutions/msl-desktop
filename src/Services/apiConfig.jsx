@@ -1,7 +1,9 @@
 import { categoryList } from "./CourseApi";
 
-const baseUrl = "https://api.mslelearning.com";
-const bucketUrl = "https://msl-storage.s3.amazonaws.com";
+// const baseUrl = "https://api.mslelearning.com";
+const baseUrl = "https://taxlawgh.mslelearning.com";
+// const bucketUrl = "https://msl-storage.s3.amazonaws.com";
+const bucketUrl = "https://mslbucketmain.s3.amazonaws.com"
 const cdnUrl = "https://d22xt9lq4ioh7j.cloudfront.net";
 
 const apiEndpoints = {
@@ -25,7 +27,7 @@ const apiEndpoints = {
 
 
     // COURSES  
-    courseList: baseUrl + "/course/all/v2",
+    courseList: baseUrl + "/course/all/v2?page=1&limit=10000",
     userCourses: baseUrl + '/course/v2/user',
     singleCourse: baseUrl + "/course/admin/single/v2",
     lesson: baseUrl + "/lesson",

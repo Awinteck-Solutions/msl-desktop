@@ -54,11 +54,15 @@ export const userCourseList = async (email) => {
       const response = await axios.get(
         apiEndpoints.userCourses + `/${email}`,
       ); 
-      console.log(`${apiEndpoints.userCourses + `/${email}`}`)
+      console.log(`${apiEndpoints.userCourses + `/${email}?page=1&limit=1000`}`);
       console.log('response :>> ', response);
       if (response.status == 200) {
+        const unique = Array.from(
+          new Map(response.data.result.map(item => [item._id, item])).values()
+        );
+        console.log('unique :>> ', unique);
         return {
-          response:response.data.result,
+          response: unique,
         };
       } else if (response.status == 404) {
         return {

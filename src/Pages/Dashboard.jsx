@@ -6,6 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { categoryList, courseList, userCourseList } from "../Services/CourseApi";
 import { useEffect, useState } from "react";
 import { verify } from "../Services/UserApi";
+import apiEndpoints from "../Services/apiConfig";
 
 
 
@@ -110,16 +111,16 @@ const Dashboard = () => {
 
         
         return <>
-         <div className="flex space-x-4 mt-10">
+         <div className="flex flex-wrap gap-2 space-x-4 mt-10">
          <p
                     onClick={() => {
                         onCategorySelected('all')
                                 }}
                     className={
                         categoryTab=='all' ?
-                        "bg-[#336699] hover:bg-[#336699] hover:text-white duration-200 cursor-pointer border-2 border-[#336699] text-white rounded-3xl p-2 w-28 text-center font-semibold"
+                        "bg-[#336699] text-nowrap hover:bg-[#336699] hover:text-white duration-200 cursor-pointer border-2 border-[#336699] text-white rounded-3xl p-2 min-w-28 w-fit h-fit text-center font-semibold"
                         :
-                        "hover:bg-[#336699] hover:text-white duration-200 bg-white cursor-pointer border-2 border-[#336699] text-[#336699] rounded-3xl p-2 w-28 text-center font-semibold"
+                        "hover:bg-[#336699] text-nowrap hover:text-white duration-200 bg-white cursor-pointer border-2 border-[#336699] text-[#336699] rounded-3xl p-2 min-w-28 w-fit h-fit text-center font-semibold"
                     }
                 >ALL</p>
                 {category?.sort((a,b)=> Number(a.position) - Number(b.position)).map((item)=>{
@@ -129,9 +130,9 @@ const Dashboard = () => {
                                  }}
                                  className={
                                     categoryTab==item.name ?
-                                    "bg-[#336699] hover:bg-[#336699] hover:text-white duration-200 border-2 border-[#336699] text-white rounded-3xl p-2 w-28 text-center font-semibold"
+                                    "bg-[#336699] text-nowrap hover:bg-[#336699] hover:text-white duration-200 border-2 border-[#336699] text-white rounded-3xl p-2 min-w-28 w-fit h-fit text-center font-semibold"
                                     :
-                                    "hover:bg-[#336699] hover:text-white duration-200 bg-white cursor-pointer border-2 border-[#336699] text-[#336699] rounded-3xl p-2 w-28 text-center font-semibold"
+                                    "hover:bg-[#336699] text-nowrap hover:text-white duration-200 bg-white cursor-pointer border-2 border-[#336699] text-[#336699] rounded-3xl p-2  min-w-28 w-fit h-fit text-center font-semibold"
                                 }
                 >{item.name}</p>
                 })} 
@@ -146,7 +147,7 @@ const Dashboard = () => {
                 <SideBar dashboard={ true } />
             </div>
 
-            <div className="w-full bg-gray-50">
+            <div className="w-full bg-gray-50 overflow-scroll h-screen">
 
                 {/* Heading */}
                 <div className="m-2 mt-4">
@@ -184,12 +185,13 @@ const Dashboard = () => {
                                    color='blue.500'
                                />
                        </div>
-                            : 
+                            :
                             myCourses?.map((value) => {
                                 return <div className="flex-initial min-w-[300px] m-1">
                                     <Item
                                         route={`/course/preview/${value._id}`}
-                                        image={`https://api.mslelearning.com/${value.thumbnail}`}
+                                        // image={`https://api.mslelearning.com/${value.thumbnail}`}
+                                        image={`${apiEndpoints.bucketUrl}/${value.thumbnail?.replace(/^\/?public\/res\//, '')}`}
                                         title={value.title}
                                         description={value.description}
                                             price={value.price}
@@ -231,15 +233,16 @@ const Dashboard = () => {
                                 </div>
                             : 
                             
-                        courses?.map((value) => { 
-                              return  <div className="flex-initial min-w-[300px] m-1">
+                        courses?.map((value) => {
+                           return  <div className="flex-initial min-w-[300px] m-1">
                                   <ItemView
                                       link={value.link}
-                                image={`https://api.mslelearning.com/${value.thumbnail}`}
+                                // image={`https://api.mslelearning.com/${value?.thumbnail}`}
+                               image={`${apiEndpoints.bucketUrl}/${value.thumbnail?.replace("public/res/", "")}`}
                                 title={value.title}
                                 description={value.description}
                                     price={value.price}
-                                    category={[value.categoryId.name]}
+                                    category={[value?.categoryId?.name]}
                                     rating={4.5}
                                     lessons={value.lessons}
                                 enrolled={100}

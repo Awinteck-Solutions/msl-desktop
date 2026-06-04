@@ -10,11 +10,11 @@ export default function ItemView({image,title,lessons,link,category=[],descripti
             <div className=" relative space-y-2">
                 <p className="font-bold text-black">{title}</p>
                 <div className=" w-full">
-                    <p className="text-sm text-gray-600">{description.substring(0,100) }...</p>
+                    <p className="text-sm text-gray-600">{description?.substring(0,100) }...</p>
                 </div>
 
                 <div className="flex space-x-2">
-                    {category.slice(0,3).map((value,index) => {
+                    {category?.slice(0,3).map((value,index) => {
                         return <p key={index} className="text-[12px] cursor-default rounded border text-white bg-[#336699] p-1">{ value }</p>
                     })}
                 </div>

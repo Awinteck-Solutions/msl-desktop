@@ -11,6 +11,8 @@ const SideBar = ({ dashboard, mycourse, course, feedback, help, logout }) => {
     const navigator = useNavigate();
     let user = localStorage.getItem('user')
     const [downloads, setDownloads] = useState({});
+    const [clearDownloads, setClearDownloads] = useState(false)
+    const [downloadCount, setDownloadCount] = useState(0)
     const [updateAvailable, setUpdateAvailable] = useState({})
 
     const { isOpen, onOpen, onClose } = useDisclosure()
@@ -83,6 +85,7 @@ const SideBar = ({ dashboard, mycourse, course, feedback, help, logout }) => {
         window.electronAPI.receiveData('download-complete', (data) => {
             // console.log('download-complete :>> ', data);
             setDownloads((prev) => ({ ...prev, [data.filename]: 100 })); // Mark as complete
+            setClearDownloads(false); // Reset clear downloads state
         });
 
         // Listen for download failures
@@ -92,6 +95,24 @@ const SideBar = ({ dashboard, mycourse, course, feedback, help, logout }) => {
         });
         // ===========================================================
 
+        // Listen for download completion
+        window.electronAPI.receiveData('delete-complete', (data) => {
+            setInterval(() => {
+                setClearDownloads(false);
+            }
+            , 1000);
+            setDownloadCount(0); // Reset download count
+            setDownloads({}); // Clear the downloads state
+        });
+
+        window.electronAPI.sendData('count-encrypted-files', 'count-encrypted-files');
+
+           // Listen for download completion
+           window.electronAPI.receiveData('total-files-count', (data) => {
+            console.log('total-files-count :>> ', data);
+            setDownloadCount(data); // 
+        });
+     
 
     }, [])
 
@@ -215,6 +236,23 @@ const SideBar = ({ dashboard, mycourse, course, feedback, help, logout }) => {
                         </span>
                         <span>Logout</span>
                     </Link>
+                </div>
+
+                <div 
+                onClick={() => {
+                    window.electronAPI.sendData('clear-downloads', 'clear-downloads');
+                    setDownloads({}); // Clear the local state
+                    setClearDownloads(true);
+                }}
+                className="flex cursor-pointer space-x-2 px-4 hover:bg-blue-100 hover:text-blue-900 text-gray-700 font-medium p-3 border-b">
+                        <span>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="size-6" width="128" height="128" viewBox="0 0 16 16"><path fill="currentColor" d="M2 5v10c0 .55.45 1 1 1h9c.55 0 1-.45 1-1V5zm3 9H4V7h1zm2 0H6V7h1zm2 0H8V7h1zm2 0h-1V7h1zm2.25-12H10V.75A.753.753 0 0 0 9.25 0h-3.5A.753.753 0 0 0 5 .75V2H1.75a.75.75 0 0 0-.75.75V4h13V2.75a.75.75 0 0 0-.75-.75M9 2H6v-.987h3z"/></svg>
+                        </span>
+                        {clearDownloads ?
+                            <span className="text-green-600">Clearing...</span> :
+                            <span>Clear downloads ({downloadCount})</span>
+                            }
+                        
                 </div>
             </div>
 

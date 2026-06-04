@@ -21,6 +21,8 @@ const creatWindow = () => {
             enableRemoteModule: false,
         },
     });
+    // Enable screen capture protection
+    win.setContentProtection(true);
 
     const urlPath = url.format({
         pathname: path.join(__dirname, '../dist/index.html'),
@@ -182,8 +184,9 @@ const showDownloadDeletedNotification = (fileName, status) => {
 };
 
 const deleteDecryptedFiles = () => {
+         const folderPath = tempFolderPath;
     try {
-        const folderPath = tempFolderPath;
+   
         if (fs.existsSync(folderPath)) {
             const files = fs.readdirSync(folderPath);
             files.forEach(file => {
@@ -238,23 +241,53 @@ app.whenReady().then(() => {
         }
     });
 
-    ipcMain.on('delete-download', async (event, data) => {
-        const filePath = path.join(encryptFolderPath, `${data.filename}.enc`);
+    ipcMain.on('clear-downloads', async (event, data) => {
         try {
-            console.log('filePath :>> ', filePath);
-            fs.unlink(filePath, (err) => {
+            console.log('Deleting all files in:', encryptFolderPath);
+
+            fs.rm(encryptFolderPath, { recursive: true, force: true }, (err) => {
                 if (err) {
-                    console.error('Error deleting file:', err);
-                    showDownloadDeletedNotification(data.filename, 'failed');
+                    console.error('Error deleting folder contents:', err);
+                    showDownloadDeletedNotification('all files', 'failed');
+                    win.webContents.send('delete-complete', false);
                 } else {
-                    showDownloadDeletedNotification(data.filename, 'success');
-                    console.log(`File deleted successfully: ${filePath}`);
+                    // Optionally recreate the folder after deletion
+                    fs.mkdirSync(encryptFolderPath, { recursive: true });
+
+                    showDownloadDeletedNotification('all files', 'success');
+                    console.log(`All files deleted successfully from: ${encryptFolderPath}`);
                     win.webContents.send('delete-complete', true);
                 }
             });
         } catch (error) {
-            console.log('error :>> ', error);
-            showDownloadDeletedNotification(data.filename, 'failed');
+            console.log('Unexpected error :>> ', error);
+            showDownloadDeletedNotification('all files', 'failed');
+            win.webContents.send('delete-complete', false);
+        }
+    });
+
+    function countFilesInFolder(folderPath) {
+        return new Promise((resolve, reject) => {
+            fs.readdir(folderPath, { withFileTypes: true }, (err, items) => {
+                if (err) {
+                    return reject(err);
+                }
+
+                const fileCount = items.filter(item => item.isFile()).length;
+                resolve(fileCount);
+            });
+        });
+    }
+
+    ipcMain.on('count-encrypted-files', async (event) => {
+        try {
+            const totalFiles = await countFilesInFolder(encryptFolderPath);
+            // console.log(`Total files in folder: ${totalFiles}`);
+            win.webContents.send('total-files-count', totalFiles);
+        } catch (err) {
+            // console.error('Error counting files:', err);
+            // event.reply('total-files-count', 0);
+            win.webContents.send('total-files-count', totalFiles);
         }
     });
 
@@ -339,6 +372,11 @@ app.whenReady().then(() => {
         });
     });
 
+    ipcMain.on('clear-downloads', (event, data) => {
+        console.log('-------------------Clear all downloads:', data);
+
+    });
+
     win.on('blur', () => {
         console.log('App inactive, cleaning up decrypted files.');
         deleteDecryptedFiles();
@@ -355,7 +393,7 @@ app.on('window-all-closed', () => {
 });
 
 process.on('uncaughtException', (error) => {
-    console.log(error);
+    console.log('uncaught',error);
     dialog.showErrorBox('Application Error', 'Something went wrong');
 });
 
@@ -364,5 +402,8 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 app.on('render-process-gone', (event, webContents, killed) => {
+    console.log('Render process gone:', webContents, killed);
     dialog.showErrorBox('Application Error', 'Please restart app');
 });
+
+ 
