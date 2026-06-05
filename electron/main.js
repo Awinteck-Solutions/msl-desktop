@@ -24,7 +24,7 @@ const creatWindow = () => {
         },
     });
     // Enable screen capture protection
-    // win.setContentProtection(true);
+    win.setContentProtection(true);
 
     const urlPath = url.format({
         pathname: path.join(__dirname, '../dist/index.html'),
