@@ -25,6 +25,17 @@ export const chakraTheme = extendTheme({
       900: "#07041e",
     },
   },
+  styles: {
+    global: (props) => ({
+      ".chakra-accordion__button": {
+        color: props.colorMode === "dark" ? "#f1f0f8" : undefined,
+        background: "transparent",
+      },
+      ".chakra-accordion__icon": {
+        color: props.colorMode === "dark" ? "rgba(225, 223, 240, 0.68)" : undefined,
+      },
+    }),
+  },
   components: {
     Button: {
       defaultProps: {

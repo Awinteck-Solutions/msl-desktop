@@ -107,14 +107,20 @@ const SideBar = ({
         collapsed ? "w-[72px]" : "w-[260px]"
       } flex-shrink-0 h-screen flex flex-col border-r border-msl-border bg-msl-glass backdrop-blur-xl transition-[width] duration-200`}
     >
-      <div className={`border-b border-msl-border ${collapsed ? "p-3" : "p-6"}`}>
-        <img
-          className={`object-contain mx-auto ${collapsed ? "w-10" : "w-24"}`}
-          src="https://mslelearning.com/mslogo.png"
-          alt="MSL"
-        />
+      <div className={`border-b border-msl-border ${collapsed ? "p-3" : "p-5"}`}>
+        <div
+          className={`mx-auto flex items-center justify-center rounded-msl bg-white border border-black/5 shadow-sm ${
+            collapsed ? "w-11 h-11" : "w-full max-w-[200px] px-4 py-3"
+          }`}
+        >
+          <img
+            className={`object-contain ${collapsed ? "w-8 h-8" : "w-full max-h-14"}`}
+            src="https://mslelearning.com/mslogo.png"
+            alt="MSL"
+          />
+        </div>
         {!collapsed ? (
-          <p className="text-center text-xs text-msl-muted mt-2 tracking-widest uppercase">
+          <p className="text-center text-xs text-msl-muted mt-3 tracking-widest uppercase">
             Business School
           </p>
         ) : null}

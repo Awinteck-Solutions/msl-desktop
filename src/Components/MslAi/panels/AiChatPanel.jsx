@@ -512,7 +512,7 @@ export default function AiChatPanel({ isOpen, onClose }) {
                 value={courseSearch}
                 onChange={(e) => setCourseSearch(e.target.value)}
                 placeholder="Search courses"
-                className="w-full rounded-xl border border-msl-border bg-msl-bg/50 pl-9 pr-3 py-2 text-sm text-msl-text placeholder:text-msl-muted focus:outline-none focus:border-brand/40 focus:ring-2 focus:ring-brand/15"
+                className="w-full rounded-xl border border-msl-border bg-msl-bg/50 pl-9 pr-3 py-2 text-sm text-msl-text placeholder:text-msl-muted focus:outline-none focus:border-brand/40 focus:ring-2 focus:ring-brand/15 dark:text-black"
               />
             </div>
           </div>

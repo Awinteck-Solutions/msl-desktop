@@ -35,7 +35,7 @@ export default {
         "glow-indigo-soft": "var(--glow-indigo-soft)",
       },
       backgroundImage: {
-        "gradient-cta": "linear-gradient(135deg, #201895, #2E22B8, #181070)",
+        "gradient-cta": "var(--gradient-cta)",
       },
       borderRadius: {
         msl: "var(--msl-radius)",

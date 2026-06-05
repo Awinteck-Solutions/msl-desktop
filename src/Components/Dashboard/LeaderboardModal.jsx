@@ -18,7 +18,7 @@ export default function LeaderboardModal({ isOpen, onClose }) {
   useEffect(() => {
     if (!isOpen) return;
     setLoading(true);
-    getLeaderboard(type, 20)
+    getLeaderboard(type, 200)
       .then((res) => {
         if (res.status) setData(res.response);
       })

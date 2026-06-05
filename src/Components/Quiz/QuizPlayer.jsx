@@ -86,6 +86,21 @@ function McqOptions({ options, selected, revealed, correctAnswer, onPick }) {
   );
 }
 
+function trueFalseOptionClass({ option, selected, revealed, correctAnswer }) {
+  if (!revealed) {
+    return selected === option
+      ? "border-brand bg-brand/10 ring-2 ring-brand/20 text-msl-text"
+      : "border-msl-border bg-msl-surface-elevated text-msl-text hover:border-brand/30 hover:bg-brand/5";
+  }
+  if (option === correctAnswer) {
+    return "border-emerald-500 bg-emerald-500/15 ring-2 ring-emerald-500/25 text-msl-text";
+  }
+  if (option === selected) {
+    return "border-red-500/60 bg-red-500/10 ring-2 ring-red-500/20 text-msl-text";
+  }
+  return "border-msl-border/50 bg-msl-surface-elevated/60 text-msl-muted";
+}
+
 function TrueFalseOptions({ options, selected, revealed, correctAnswer, onPick }) {
   const tfOptions = options.length >= 2 ? options : ["True", "False"];
   return (
@@ -93,27 +108,35 @@ function TrueFalseOptions({ options, selected, revealed, correctAnswer, onPick }
       {tfOptions.map((option) => {
         const isTrue = String(option).toLowerCase() === "true";
         const isSelected = selected === option;
+        const isCorrect = revealed && option === correctAnswer;
+        const isWrong = revealed && isSelected && option !== correctAnswer;
         return (
           <button
             key={option}
             type="button"
             disabled={revealed}
             onClick={() => onPick(option)}
-            className={`min-h-[100px] rounded-msl text-sm font-semibold flex flex-col items-center justify-center gap-2 border transition-all duration-200 ${optionRevealClass({
+            className={`min-h-[100px] rounded-msl text-sm font-semibold flex flex-col items-center justify-center gap-2 border transition-all duration-200 ${trueFalseOptionClass({
               option,
               selected,
               revealed,
               correctAnswer,
-            })}`}
+            })} ${isCorrect ? "animate-answer-reveal" : ""}`}
           >
             <span
               className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${
-                isTrue ? "bg-emerald-500/15 text-emerald-500" : "bg-red-500/15 text-red-500"
+                isCorrect
+                  ? "bg-emerald-500 text-white"
+                  : isWrong
+                    ? "bg-red-500 text-white"
+                    : isTrue
+                      ? "bg-emerald-500/20 text-emerald-400"
+                      : "bg-red-500/20 text-red-400"
               }`}
             >
               {isTrue ? "✓" : "✕"}
             </span>
-            <span>{option}</span>
+            <span className="capitalize">{option}</span>
           </button>
         );
       })}

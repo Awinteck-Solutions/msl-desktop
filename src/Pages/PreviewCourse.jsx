@@ -44,6 +44,7 @@ const PreviewCourse = () => {
     const [isEnrolled, setIsEnrolled] = useState(false)
     const { setAiScope } = useMslAi()
     const initialCourseScopeSet = useRef(false)
+    const scrollContainerRef = useRef(null)
 
     const verifyDevice = () => {
         verify().then((res) => {
@@ -58,6 +59,11 @@ const PreviewCourse = () => {
     const [selected, setSelected] = useState(true)
     const [playVideo, setPlayVideo] = useState(null)
     const [courseTab, setCourseTab] = useState("overview")
+
+    useEffect(() => {
+        if (!playVideo || !scrollContainerRef.current) return;
+        scrollContainerRef.current.scrollTo({ top: 0, behavior: "smooth" });
+    }, [playVideo]);
     const [visitTick, setVisitTick] = useState(0)
 
     const [selectedPdf, setSelectedPdf] = useState(null)
@@ -361,19 +367,19 @@ const PreviewCourse = () => {
                                                 filename: link?.split('/')[1]
                                             })
                                     }}>
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-4">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-4 text-msl-muted hover:text-msl-text">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="m9 12.75 3 3m0 0 3-3m-3 3v-7.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                                     </svg>
                                 </span>
                                 :
                                 <div className="flex space-x-1">
-                                    <span className="text-green-600">
+                                    <span className="text-emerald-500">
                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-4">
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
                                         </svg>
                                     </span>
 
-                                    <span className="text-red-400 hover:text-red-600"
+                                    <span className="text-red-400 hover:text-red-500"
                                         onClick={() => {
                                             window.electronAPI.sendData('delete-download',
                                                 { filename: link?.split('/')[1] })
@@ -564,19 +570,19 @@ const PreviewCourse = () => {
                                                 filename: link?.split('/')[1]
                                             })
                                     }}>
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-4">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-4 text-msl-muted hover:text-msl-text">
                                         <path strokeLinecap="round" strokeLinejoin="round" d="m9 12.75 3 3m0 0 3-3m-3 3v-7.5M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                                     </svg>
                                 </span>
                                 :
                                 <div className="flex space-x-1">
-                                    <span className="text-green-600">
+                                    <span className="text-emerald-500">
                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-4">
                                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
                                         </svg>
                                     </span>
 
-                                    <span className="text-red-400 hover:text-red-600"
+                                    <span className="text-red-400 hover:text-red-500"
                                         onClick={() => {
                                             window.electronAPI.sendData('delete-download',
                                                 { filename: link?.split('/')[1] })
@@ -627,7 +633,7 @@ const PreviewCourse = () => {
                     <div className="animate-pulse rounded-msl bg-msl-accent/60 h-48 w-full" />
                 </div>
                 :
-                <div className="flex-1 overflow-y-auto min-w-0">
+                <div ref={scrollContainerRef} className="flex-1 overflow-y-auto min-w-0">
                     <div className="px-6 lg:px-10 py-6 space-y-6 max-w-5xl mx-auto w-full">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                             <Link
@@ -731,9 +737,9 @@ const PreviewCourse = () => {
                                 </div>
                             ) : (
                                 <div className="px-2 py-3">
-                                        <Accordion allowMultiple allowToggle>
+                                        <Accordion allowMultiple allowToggle className="text-msl-text">
                                             {data?.lessons?.length == 0 ?
-                                                <div className="text-lg font-semibold text-center my-2 text-gray-500">
+                                                <div className="text-lg font-semibold text-center my-2 text-msl-muted">
                                                     <p>Not Available</p>
                                                 </div>
                                                 : ''}
@@ -741,7 +747,7 @@ const PreviewCourse = () => {
                                                 const lessonDone = isLessonFullyVisited(String(id), item);
                                                 return <AccordionItem key={`${id}-${visitTick}`}>
                                                     <h2>
-                                                        <AccordionButton className="!py-3.5 hover:!bg-msl-accent/40 rounded-lg !px-3">
+                                                        <AccordionButton className="!py-3.5 hover:!bg-msl-accent/40 rounded-lg !px-3 !text-msl-text !bg-transparent">
                                                             <Box as='span' flex='1' textAlign='left'>
                                                                 <p className='text-sm font-medium text-msl-text pr-2 flex items-center gap-2'>
                                                                     {lessonDone ? (
@@ -750,7 +756,7 @@ const PreviewCourse = () => {
                                                                     <span>{item?.title}</span>
                                                                 </p>
                                                             </Box>
-                                                            <AccordionIcon />
+                                                            <AccordionIcon className="!text-msl-muted" />
                                                         </AccordionButton>
                                                     </h2>
                                                     <AccordionPanel pb={4}>
