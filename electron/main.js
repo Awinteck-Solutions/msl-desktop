@@ -24,7 +24,7 @@ const creatWindow = () => {
         },
     });
     // Enable screen capture protection
-    win.setContentProtection(true);
+    // win.setContentProtection(true);
 
     const urlPath = url.format({
         pathname: path.join(__dirname, '../dist/index.html'),
@@ -35,6 +35,10 @@ const creatWindow = () => {
     let appPath = path.join(__dirname, '../dist/index.html');
     console.log('appPath :> ', appPath, urlPath);
     win.loadFile(appPath);
+
+    win.webContents.on('context-menu', (event) => {
+        event.preventDefault();
+    });
 
     // win.webContents.openDevTools();
 };

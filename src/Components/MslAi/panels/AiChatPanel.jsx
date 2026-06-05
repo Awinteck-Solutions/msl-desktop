@@ -478,20 +478,20 @@ export default function AiChatPanel({ isOpen, onClose }) {
         type="button"
         className="absolute inset-0 bg-msl-bg/85"
         onClick={handleClose}
-        aria-label="Close AI tutor"
+        aria-label="Close MSL AI"
       />
       <div
         className="relative w-full max-w-6xl h-[min(720px,calc(100vh-1.5rem))] flex overflow-hidden rounded-msl border border-msl-border bg-msl-surface shadow-glow-indigo animate-pop-in"
         role="dialog"
         aria-modal="true"
-        aria-label="AI Tutor"
+          aria-label="MSL AI"
       >
         <aside className="w-[280px] shrink-0 flex flex-col border-r border-msl-border bg-msl-surface">
           <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-msl-border">
             <div className="flex items-center gap-2 min-w-0">
               <Sparkles className="w-4 h-4 text-brand shrink-0" strokeWidth={1.75} />
               <h2 className="font-display text-sm font-semibold text-msl-text truncate">
-                AI Tutor
+                MSL AI
               </h2>
             </div>
             <button
@@ -749,7 +749,7 @@ export default function AiChatPanel({ isOpen, onClose }) {
                       ? "Add a message about this image…"
                       : audioMode
                         ? "Type or tap mic to speak…"
-                        : "Message AI tutor…"
+                        : "Message MSL AI…"
                   }
                   value={input}
                   onChange={(e) => setInput(e.target.value)}

@@ -119,11 +119,11 @@ const SideBar = ({
             alt="MSL"
           />
         </div>
-        {!collapsed ? (
+        {/* {!collapsed ? (
           <p className="text-center text-xs text-msl-muted mt-3 tracking-widest uppercase">
             Business School
           </p>
-        ) : null}
+        ) : null} */}
       </div>
 
       <div className={`px-2 py-2 border-b border-msl-border ${collapsed ? "flex justify-center" : ""}`}>
@@ -202,7 +202,7 @@ const SideBar = ({
           </div>
         </div>
 
-        <div>
+        {/* <div>
           {!collapsed ? (
             <p className="px-4 text-[10px] font-semibold uppercase tracking-widest text-msl-muted mb-2">
               Practice
@@ -224,7 +224,7 @@ const SideBar = ({
               icon={<Layers className="w-5 h-5" strokeWidth={1.75} />}
             />
           </div>
-        </div>
+        </div> */}
 
         <div>
           {!collapsed ? (

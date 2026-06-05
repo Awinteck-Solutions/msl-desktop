@@ -124,9 +124,9 @@ const Dashboard = () => {
             </div>
           </div>
           <div className="flex gap-2">
-            <Link to="/practice/quiz" className="msl-btn-primary">
+            {/* <Link to="/practice/quiz" className="msl-btn-primary">
               Practice quiz
-            </Link>
+            </Link> */}
             <button
               type="button"
               onClick={() => setLeaderboardOpen(true)}

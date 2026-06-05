@@ -5,6 +5,9 @@ import App from "./App.jsx";
 import { ChakraProvider, ColorModeScript } from "@chakra-ui/react";
 import { chakraTheme } from "./theme/chakraTheme";
 import { ThemeProvider } from "./Context/ThemeContext";
+import { initCopyProtection } from "./utils/copyProtection";
+
+initCopyProtection();
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>

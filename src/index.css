@@ -65,6 +65,24 @@
     font-size: 14px;
   }
 
+  html,
+  body,
+  #root {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  input:not([type="checkbox"]):not([type="radio"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="file"]),
+  textarea,
+  select,
+  [contenteditable=""],
+  [contenteditable="true"],
+  [contenteditable="plaintext-only"] {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
   body {
     @apply bg-msl-bg text-msl-text antialiased;
     margin: 0;
@@ -216,6 +234,14 @@
   .animate-answer-reveal {
     animation: answerReveal 400ms ease-out forwards;
   }
+
+  .animate-msl-fab-bounce {
+    animation: mslFabBounce 1.8s ease-in-out infinite;
+  }
+
+  .animate-msl-fab-bounce:hover {
+    animation-play-state: paused;
+  }
 }
 
 @keyframes exploreCarousel {
@@ -270,11 +296,22 @@
   }
 }
 
+@keyframes mslFabBounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-slide-in,
   .animate-pop-in,
   .animate-fade-in,
   .animate-explore-carousel,
+  .animate-msl-fab-bounce,
   .flip-card-inner,
   .skeleton-shimmer,
   .animate-answer-reveal {
