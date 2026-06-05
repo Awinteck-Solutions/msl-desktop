@@ -1,16 +1,34 @@
 import SideBar from "../Components/General/SideBar";
-import { useEffect, useState } from "react";
-import apiEndpoints from "../Services/apiConfig";
+import { useEffect, useRef, useState } from "react";
+import { mediaUrl } from "../Services/apiConfig";
+import { getStoredUser } from "../Services/session";
 import {
     Accordion,
     AccordionItem,
     AccordionButton, Divider,
     AccordionPanel, Box,
-    AccordionIcon, Spinner,
+    AccordionIcon, Spinner, useToast,
 } from '@chakra-ui/react'
-import { useNavigate, useParams } from "react-router-dom";
-import { singleCourse } from "../Services/CourseApi";
+import { useNavigate, useParams, Link } from "react-router-dom";
+import {
+    BookOpen,
+    Check,
+    ChevronLeft,
+    FileText,
+    Lock,
+    PlayCircle,
+    ShieldCheck,
+    Smartphone,
+} from "lucide-react";
+import { singleCourse, fetchEnrolledCourseIds } from "../Services/CourseApi";
 import { verify } from "../Services/UserApi";
+import { useMslAi } from "../Context/MslAiContext";
+import { normalizeS3Key } from "../utils/s3Key";
+import {
+    isLessonFullyVisited,
+    isResourceVisited,
+    markResourceVisited,
+} from "../utils/courseVisitProgress";
 
 
 const PreviewCourse = () => {
@@ -21,21 +39,16 @@ const PreviewCourse = () => {
     const [data, setData] = useState({});
     const [lessons, setLessons] = useState([]);
     const navigator = useNavigate()
+    const toast = useToast()
     const [refresh, setRefresh] = useState(false)
+    const [isEnrolled, setIsEnrolled] = useState(false)
+    const { setAiScope } = useMslAi()
+    const initialCourseScopeSet = useRef(false)
 
     const verifyDevice = () => {
-        console.info('VERIFICATION CALLED')
-        const payload = {
-            "device_id": "e43c-5223c2-53c2-s456",
-            "user_id": JSON.parse(user)?._id
-        }
-        console.log('payload', payload)
-        verify(payload).then((res) => {
-            console.table(res)
-        }).catch((error) => {
-            console.log('ERROR', error)
-            navigator('/login')
-        })
+        verify().then((res) => {
+            if (!res.status) navigator('/login');
+        }).catch(() => navigator('/login'));
     }
 
     const [downloadedList, setDownloadedList] = useState([])
@@ -44,6 +57,8 @@ const PreviewCourse = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [selected, setSelected] = useState(true)
     const [playVideo, setPlayVideo] = useState(null)
+    const [courseTab, setCourseTab] = useState("overview")
+    const [visitTick, setVisitTick] = useState(0)
 
     const [selectedPdf, setSelectedPdf] = useState(null)
     const [selectedVideo, setSelectedVideo] = useState({
@@ -95,8 +110,11 @@ const PreviewCourse = () => {
             // console.log('previewCourseCall response :>> ', response.response.response);
 
             let data = response.response.response
-            const sortedLessons = data.lessons.map((lesson) => {
-                const linkedCourse = lesson.linkedCourses.find(lc => lc.course === id);
+            const courseIdStr = String(id);
+            const sortedLessons = (data.lessons || []).map((lesson) => {
+                const linkedCourse = lesson.linkedCourses?.find(
+                    (lc) => String(lc.course?._id ?? lc.course) === courseIdStr
+                );
                 const position = linkedCourse ? linkedCourse.position : Number.MAX_VALUE;
                 return { ...lesson, position };
             }).sort((a, b) => a.position - b.position)
@@ -115,7 +133,14 @@ const PreviewCourse = () => {
     // ---------------------API CALLS--------------------------//
 
     useEffect(() => {
+        if (!getStoredUser()?.token) {
+            navigator('/login');
+            return;
+        }
         previewCourseCall()
+        fetchEnrolledCourseIds()
+            .then((ids) => setIsEnrolled(ids.has(String(id))))
+            .catch(() => setIsEnrolled(false));
 
         window.electronAPI.sendData('getDownloadedList', null);
 
@@ -137,10 +162,57 @@ const PreviewCourse = () => {
         });
     }, [refresh])
 
-    const VideoItem = ({ link, number, downloaded = false, selected = false }) => {
+    useEffect(() => {
+        initialCourseScopeSet.current = false;
+    }, [id]);
 
+    useEffect(() => {
+        if (!isEnrolled || !data.title || initialCourseScopeSet.current) return;
+        initialCourseScopeSet.current = true;
+        setAiScope({
+            courseId: String(id),
+            label: data.title || "Current course",
+            source: "page",
+            resourceType: null,
+        });
+    }, [isEnrolled, id, data.title, setAiScope]);
+
+    const blockResourceAccess = () => {
+        toast({
+            title: "Enrollment required",
+            description:
+                "Preview this course overview only. Enroll via the mobile app to watch videos and read lesson materials.",
+            status: "info",
+            duration: 5000,
+            isClosable: true,
+        });
+    };
+
+    const VideoItem = ({ link, lesson, number, downloaded = false, selected = false, canAccess = true }) => {
+        const visited =
+            lesson && link
+                ? isResourceVisited(String(id), String(lesson._id), link)
+                : false;
 
         const onTap = () => {
+            if (!canAccess) {
+                blockResourceAccess();
+                return;
+            }
+            if (lesson && link) {
+                markResourceVisited(String(id), String(lesson._id), link);
+                setVisitTick((t) => t + 1);
+            }
+            if (lesson) {
+                setAiScope({
+                    courseId: String(id),
+                    lessonId: String(lesson._id),
+                    s3Keys: link ? [normalizeS3Key(link)] : [],
+                    label: `${lesson.title} · Video ${number}`,
+                    source: "page",
+                    resourceType: "video",
+                });
+            }
             const videoKey = `video${number > 1 ? number - 1 : ''}`;  // video, video1, video2...
             console.log(link);
             verifyDevice()
@@ -160,7 +232,7 @@ const PreviewCourse = () => {
                 });
             } else {
                 // selectedVideo[videoKey] = link;
-                setPlayVideo(`${apiEndpoints.bucketUrl}/${link}`);
+                setPlayVideo(`${mediaUrl(link)}`);
             }
 
             // setSelectedVideo(selectedVideo);
@@ -183,7 +255,7 @@ const PreviewCourse = () => {
                     }
                     else {
                         selectedVideo.video = link;
-                        setPlayVideo(`${apiEndpoints.bucketUrl}/${link}`)
+                        setPlayVideo(`${mediaUrl(link)}`)
                     }
 
                     break;
@@ -201,7 +273,7 @@ const PreviewCourse = () => {
                     }
                     else {
                         selectedVideo.video = link;
-                        setPlayVideo(`${apiEndpoints.bucketUrl}/${link}`)
+                        setPlayVideo(`${mediaUrl(link)}`)
                     }
                     break;
                 case 3:
@@ -218,7 +290,7 @@ const PreviewCourse = () => {
                     }
                     else {
                         selectedVideo.video = link;
-                        setPlayVideo(`${apiEndpoints.bucketUrl}/${link}`)
+                        setPlayVideo(`${mediaUrl(link)}`)
                     }
                     break;
                 case 4:
@@ -235,7 +307,7 @@ const PreviewCourse = () => {
                     }
                     else {
                         selectedVideo.video = link;
-                        setPlayVideo(`${apiEndpoints.bucketUrl}/${link}`)
+                        setPlayVideo(`${mediaUrl(link)}`)
                     }
                     break;
                 case 5:
@@ -252,7 +324,7 @@ const PreviewCourse = () => {
                     }
                     else {
                         selectedVideo.video = link;
-                        setPlayVideo(`${apiEndpoints.bucketUrl}/${link}`)
+                        setPlayVideo(`${mediaUrl(link)}`)
                     }
                     break;
                 default:
@@ -265,30 +337,27 @@ const PreviewCourse = () => {
 
 
         return <>
-            <div className={selected ? 'cursor-pointer bg-blue-400 duration-300 my-1' : 'cursor-pointer bg-gray-50 hover:bg-gray-100 duration-300 my-1'}>
+            <div className={`lesson-resource-row ${!canAccess ? 'opacity-60' : 'hover:border-brand/30 hover:bg-brand/5'}`}>
                 <div>
-                    <div className={'flex  space-x-1 items-center justify-between text-[12px] bg-gray-200 rounded'}>
+                    <div className="flex items-center justify-between text-xs">
                         <div
-                            onClick={() => {
-                                console.log('video player')
-                                onTap()
-                            }}
-                            className="flex items-center space-x-1 h-full w-full p-3 rounded">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-4">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" />
-                            </svg>
-
-                            <span className=''>Play lesson {number}</span>
-
+                            onClick={() => onTap()}
+                            className={`flex items-center gap-2 h-full w-full p-3 ${!canAccess ? 'pointer-events-auto' : 'cursor-pointer'}`}>
+                            <PlayCircle className="w-4 h-4 text-brand shrink-0" strokeWidth={1.75} />
+                            <span className="text-msl-text font-medium">Video {number}</span>
+                            {visited ? (
+                                <Check className="w-4 h-4 text-emerald-500 shrink-0 ml-1" strokeWidth={2.5} />
+                            ) : null}
                         </div>
 
-                        <div className="p-3">
+                        {canAccess ? (
+                        <div className="p-3 flex items-center gap-2">
                             {!downloaded ?
                                 <span className=""
                                     onClick={() => {
                                         window.electronAPI.sendData('download',
                                             {
-                                                url: `${apiEndpoints.bucketUrl}/${link}`,
+                                                url: `${mediaUrl(link)}`,
                                                 filename: link?.split('/')[1]
                                             })
                                     }}>
@@ -316,14 +385,42 @@ const PreviewCourse = () => {
                                 </div>
                             }
                         </div>
+                        ) : (
+                            <span className="p-3 text-[10px] text-msl-muted inline-flex items-center gap-1">
+                                <Lock className="w-3 h-3" strokeWidth={2} /> Locked
+                            </span>
+                        )}
                     </div>
                 </div>
             </div>
         </>
     }
 
-    const PdfItem = ({ link, number, downloaded = false, selected = false }) => {
+    const PdfItem = ({ link, lesson, number, downloaded = false, selected = false, canAccess = true }) => {
+        const visited =
+            lesson && link
+                ? isResourceVisited(String(id), String(lesson._id), link)
+                : false;
+
         const onTap = () => {
+            if (!canAccess) {
+                blockResourceAccess();
+                return;
+            }
+            if (lesson && link) {
+                markResourceVisited(String(id), String(lesson._id), link);
+                setVisitTick((t) => t + 1);
+            }
+            if (lesson) {
+                setAiScope({
+                    courseId: String(id),
+                    lessonId: String(lesson._id),
+                    s3Keys: link ? [normalizeS3Key(link)] : [],
+                    label: `${lesson.title} · PDF ${number}`,
+                    source: "page",
+                    resourceType: "pdf",
+                });
+            }
             if (downloaded) {
                 console.log('------------------INTERCEPT URL PDF-------------------')
                 window.electronAPI.sendData('decrypt-pdf', link)
@@ -444,29 +541,26 @@ const PreviewCourse = () => {
 
 
         return <>
-            <div className='cursor-pointer bg-gray-50 text-[12px] hover:bg-gray-100 duration-300'>
+            <div className={`lesson-resource-row ${!canAccess ? 'opacity-60' : 'hover:border-brand/30 hover:bg-brand/5'}`}>
                 <div>
-                    <div className={'flex  space-x-1 items-center justify-between text-[12px] bg-gray-200 rounded'}>
+                    <div className="flex items-center justify-between text-xs">
                         <div
-                            onClick={() => {
-                                onTap()
-                            }}
-                            className="flex items-center space-x-1 h-full w-full p-3 rounded">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="size-4">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-                            </svg>
-
-
-                            <span className=''>Read Lesson Slide {number}</span>
-
+                            onClick={() => onTap()}
+                            className={`flex items-center gap-2 h-full w-full p-3 ${canAccess ? 'cursor-pointer' : ''}`}>
+                            <FileText className="w-4 h-4 text-brand shrink-0" strokeWidth={1.75} />
+                            <span className="text-msl-text font-medium">PDF {number}</span>
+                            {visited ? (
+                                <Check className="w-4 h-4 text-emerald-500 shrink-0 ml-1" strokeWidth={2.5} />
+                            ) : null}
                         </div>
-                        <div className="p-3">
+                        {canAccess ? (
+                        <div className="p-3 flex items-center gap-2">
                             {!downloaded ?
                                 <span className=""
                                     onClick={() => {
                                         window.electronAPI.sendData('download',
                                             {
-                                                url: `${apiEndpoints.bucketUrl}/${link}`,
+                                                url: `${mediaUrl(link)}`,
                                                 filename: link?.split('/')[1]
                                             })
                                     }}>
@@ -494,12 +588,19 @@ const PreviewCourse = () => {
                                 </div>
                             }
                         </div>
+                        ) : (
+                            <span className="p-3 text-[10px] text-msl-muted inline-flex items-center gap-1">
+                                <Lock className="w-3 h-3" strokeWidth={2} /> Locked
+                            </span>
+                        )}
                     </div>
 
                 </div>
             </div>
         </>
     }
+
+    const canAccessResources = isEnrolled;
 
 
 
@@ -515,79 +616,151 @@ const PreviewCourse = () => {
 
 
     return <>
-        <div className="flex gap-1 ">
-            <div className="min-w-[300px]">
-                <SideBar mycourse={true} />
-            </div>
+        <div className="flex h-screen bg-msl-bg overflow-hidden">
+            <SideBar mycourse={true} />
             {isLoading ?
-                <div className="text-center m-auto">
-                    <Spinner size='xl'
-                        thickness='4px'
-                        speed='0.65s'
-                        emptyColor='gray.200'
-                        color='blue.500'
-                    />
+                <div className="flex-1 overflow-y-auto px-6 lg:px-10 py-6 space-y-6 max-w-5xl mx-auto w-full">
+                    <div className="animate-pulse rounded-msl bg-msl-accent/60 h-8 w-48" />
+                    <div className="animate-pulse rounded-msl bg-msl-accent/60 aspect-video w-full" />
+                    <div className="animate-pulse rounded-msl bg-msl-accent/60 h-10 w-2/3" />
+                    <div className="animate-pulse rounded-msl bg-msl-accent/60 h-12 w-full" />
+                    <div className="animate-pulse rounded-msl bg-msl-accent/60 h-48 w-full" />
                 </div>
                 :
-                <div className="w-full bg-gray-50 overflow-scroll h-screen">
-                    {/* Heading */}
-                    <div className="m-2 mt-4">
-                        <div className="flex justify-between">
-                            <h1 className="text-xl font-bold ml-1 truncate max-w-[600px]">{data?.title}</h1>
+                <div className="flex-1 overflow-y-auto min-w-0">
+                    <div className="px-6 lg:px-10 py-6 space-y-6 max-w-5xl mx-auto w-full">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <Link
+                                to={isEnrolled ? "/personal/course" : "/course"}
+                                className="inline-flex items-center gap-1.5 text-sm text-msl-muted hover:text-brand transition-colors"
+                            >
+                                <ChevronLeft className="w-4 h-4" strokeWidth={2} />
+                                Back to courses
+                            </Link>
+                            {isEnrolled ? (
+                                <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-emerald-500 bg-emerald-500/10 border border-emerald-500/25 px-3 py-1.5 rounded-msl">
+                                    <ShieldCheck className="w-3.5 h-3.5" strokeWidth={2} />
+                                    Enrolled
+                                </span>
+                            ) : (
+                                <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-amber-500 bg-amber-500/10 border border-amber-500/25 px-3 py-1.5 rounded-msl">
+                                    <BookOpen className="w-3.5 h-3.5" strokeWidth={2} />
+                                    Preview only
+                                </span>
+                            )}
                         </div>
-                    </div>
-                    {/* Main Body */}
-                    <div className="mx-3">
-                        {!playVideo ?
-                            <div className="h-[500px] border-4 border-grey-400 bg-black">
-                                <img className="object-cover object-center w-full h-full" src={`${apiEndpoints.bucketUrl}/${data?.thumbnail?.replace("public/res/", "")}`}
-                                    alt={`${apiEndpoints.bucketUrl}/${data?.thumbnail?.replace("public/res/", "")}`} />
-                            </div>
-                            :
-                            <video
-                                className="bg-green-400 w-full"
-                                controls
-                                controlsList="nodownload"
-                                src={`${playVideo}`}>
-                            </video>
-                        }
-                        <div>
-                            <div className='lg:grid lg:grid-cols-12'>
-                                <div className='lg:col-span-7'>
-                                    <div>
-                                        <div className='mx-2'>
-                                            <p className='text-2xl font-bold my-3'>About this course</p>
-                                            <p>{data?.description}
-                                            </p>
-                                        </div>
-                                    </div>
+
+                        {!isEnrolled ? (
+                            <div className="glass-card rounded-msl p-4 flex items-start gap-3 border-amber-500/25 bg-amber-500/5">
+                                <Smartphone className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" strokeWidth={1.75} />
+                                <div>
+                                    <p className="text-sm font-medium text-msl-text">Enrollment required for full access</p>
+                                    <p className="text-xs text-msl-muted mt-1">
+                                        Browse this overview freely. Enroll via the MSL mobile app to unlock videos and lesson PDFs.
+                                    </p>
                                 </div>
-                                <div className='lg:col-span-5 bg-gray-50 lg:py-0 py-4 overflow-y-auto h-[45em]'>
-                                    <p className='text-xl font-bold lg:text-center mx-3 lg:mx-0 my-3'>Course Content</p>
-                                    <Divider></Divider>
-                                    <div className='px-4'>
-                                        <Accordion>
+                            </div>
+                        ) : null}
+
+                        <div className="rounded-msl overflow-hidden border border-msl-border bg-black shadow-card">
+                            {!playVideo ? (
+                                <div className="aspect-video bg-black relative">
+                                    <img
+                                        className="object-cover w-full h-full"
+                                        src={mediaUrl(data?.thumbnail)}
+                                        alt={data?.title || "Course preview"}
+                                    />
+                                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors" />
+                                </div>
+                            ) : (
+                                <video
+                                    className="w-full aspect-video bg-black"
+                                    controls
+                                    controlsList="nodownload"
+                                    src={playVideo}
+                                />
+                            )}
+                        </div>
+
+                        <div className="space-y-2">
+                            <h1 className="font-display text-2xl lg:text-3xl font-bold text-msl-text tracking-tight leading-tight">
+                                {data?.title}
+                            </h1>
+                            <p className="text-sm text-msl-muted">
+                                {lessons?.length ?? 0} lessons · Self-paced learning
+                            </p>
+                        </div>
+
+                        <div className="glass-card rounded-msl overflow-hidden">
+                            <div className="flex border-b border-msl-border">
+                                <button
+                                    type="button"
+                                    onClick={() => setCourseTab("overview")}
+                                    className={`flex-1 px-4 py-3.5 text-sm font-semibold transition-colors ${
+                                        courseTab === "overview"
+                                            ? "text-brand border-b-2 border-brand bg-brand/5"
+                                            : "text-msl-muted hover:text-msl-text hover:bg-msl-accent/30"
+                                    }`}
+                                >
+                                    Overview
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setCourseTab("content")}
+                                    className={`flex-1 px-4 py-3.5 text-sm font-semibold transition-colors ${
+                                        courseTab === "content"
+                                            ? "text-brand border-b-2 border-brand bg-brand/5"
+                                            : "text-msl-muted hover:text-msl-text hover:bg-msl-accent/30"
+                                    }`}
+                                >
+                                    Course content
+                                    <span className="ml-1.5 text-xs font-normal text-msl-muted">
+                                        ({lessons?.length ?? 0})
+                                    </span>
+                                </button>
+                            </div>
+
+                            {courseTab === "overview" ? (
+                                <div className="p-6 lg:p-8">
+                                    <h2 className="font-display text-lg font-semibold text-msl-text mb-3">
+                                        About this course
+                                    </h2>
+                                    <p className="text-sm text-msl-muted leading-relaxed whitespace-pre-line">
+                                        {data?.description}
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="px-2 py-3">
+                                        <Accordion allowMultiple allowToggle>
                                             {data?.lessons?.length == 0 ?
                                                 <div className="text-lg font-semibold text-center my-2 text-gray-500">
                                                     <p>Not Available</p>
                                                 </div>
                                                 : ''}
                                             {lessons?.map((item, id) => {
-                                                return <AccordionItem key={id}>
+                                                const lessonDone = isLessonFullyVisited(String(id), item);
+                                                return <AccordionItem key={`${id}-${visitTick}`}>
                                                     <h2>
-                                                        <AccordionButton>
+                                                        <AccordionButton className="!py-3.5 hover:!bg-msl-accent/40 rounded-lg !px-3">
                                                             <Box as='span' flex='1' textAlign='left'>
-                                                                <p className='text-[12px]'> {item?.title} </p>
+                                                                <p className='text-sm font-medium text-msl-text pr-2 flex items-center gap-2'>
+                                                                    {lessonDone ? (
+                                                                        <Check className="w-4 h-4 text-emerald-500 shrink-0" strokeWidth={2.5} />
+                                                                    ) : null}
+                                                                    <span>{item?.title}</span>
+                                                                </p>
                                                             </Box>
                                                             <AccordionIcon />
                                                         </AccordionButton>
                                                     </h2>
                                                     <AccordionPanel pb={4}>
                                                         <div>
-                                                            <p className='text-[12px] font-semibold mb-3'> {item?.description} </p>
+                                                            <p className='text-xs text-msl-muted mb-3 leading-relaxed'> {item?.description} </p>
                                                             {item?.video != null ?
                                                                 <div>
                                                                     <VideoItem
+                                                                        lesson={item}
+                                                                        canAccess={canAccessResources}
                                                                         selected={false}
                                                                         number={1}
                                                                         downloaded={isDownloadedFunc(item?.video)}
@@ -599,6 +772,8 @@ const PreviewCourse = () => {
                                                             {item?.video1 != null ?
                                                                 <div>
                                                                     <VideoItem
+                                                                        lesson={item}
+                                                                        canAccess={canAccessResources}
                                                                         selected={false}
                                                                         number={2}
                                                                         downloaded={isDownloadedFunc(item?.video1)}
@@ -610,6 +785,8 @@ const PreviewCourse = () => {
                                                             {item?.video2 != null ?
                                                                 <div>
                                                                     <VideoItem
+                                                                        lesson={item}
+                                                                        canAccess={canAccessResources}
                                                                         selected={false}
                                                                         number={3}
                                                                         downloaded={isDownloadedFunc(item?.video2)}
@@ -621,6 +798,8 @@ const PreviewCourse = () => {
                                                             {item.video3 != null ?
                                                                 <div>
                                                                     <VideoItem
+                                                                        lesson={item}
+                                                                        canAccess={canAccessResources}
                                                                         selected={false}
                                                                         number={4}
                                                                         downloaded={isDownloadedFunc(item?.vide3)}
@@ -632,6 +811,8 @@ const PreviewCourse = () => {
                                                             {item?.video4 != null ?
                                                                 <div>
                                                                     <VideoItem
+                                                                        lesson={item}
+                                                                        canAccess={canAccessResources}
                                                                         selected={false}
                                                                         number={5}
                                                                         downloaded={isDownloadedFunc(item?.video4)}
@@ -644,6 +825,8 @@ const PreviewCourse = () => {
                                                             {item?.video5 != null ?
                                                                 <div>
                                                                     <VideoItem
+                                                                        lesson={item}
+                                                                        canAccess={canAccessResources}
                                                                         selected={false}
                                                                         number={6}
                                                                         downloaded={isDownloadedFunc(item?.video5)}
@@ -655,6 +838,8 @@ const PreviewCourse = () => {
                                                             {item?.video6 != null ?
                                                                 <div>
                                                                     <VideoItem
+                                                                        lesson={item}
+                                                                        canAccess={canAccessResources}
                                                                         selected={false}
                                                                         number={7}
                                                                         downloaded={isDownloadedFunc(item?.video6)}
@@ -667,6 +852,8 @@ const PreviewCourse = () => {
                                                             {item?.video7 != null ?
                                                                 <div>
                                                                     <VideoItem
+                                                                        lesson={item}
+                                                                        canAccess={canAccessResources}
                                                                         selected={false}
                                                                         number={8}
                                                                         downloaded={isDownloadedFunc(item?.video7)}
@@ -679,6 +866,8 @@ const PreviewCourse = () => {
                                                             {item?.video8 != null ?
                                                                 <div>
                                                                     <VideoItem
+                                                                        lesson={item}
+                                                                        canAccess={canAccessResources}
                                                                         selected={false}
                                                                         number={9}
                                                                         downloaded={isDownloadedFunc(item?.video8)}
@@ -691,6 +880,8 @@ const PreviewCourse = () => {
                                                             {item?.pdf != null ?
                                                                 <div>
                                                                     <PdfItem
+                                                                        lesson={item}
+                                                                        canAccess={canAccessResources}
                                                                         selected={false}
                                                                         number={1}
                                                                         downloaded={isDownloadedFunc(item?.pdf)}
@@ -703,6 +894,8 @@ const PreviewCourse = () => {
                                                             {item?.pdf1 != null ?
                                                                 <div>
                                                                     <PdfItem
+                                                                        lesson={item}
+                                                                        canAccess={canAccessResources}
                                                                         selected={false}
                                                                         number={2}
                                                                         downloaded={isDownloadedFunc(item?.pdf1)}
@@ -715,6 +908,8 @@ const PreviewCourse = () => {
                                                             {item?.pdf2 != null ?
                                                                 <div>
                                                                     <PdfItem
+                                                                        lesson={item}
+                                                                        canAccess={canAccessResources}
                                                                         selected={false}
                                                                         number={3}
                                                                         downloaded={isDownloadedFunc(item?.pdf2)}
@@ -727,6 +922,8 @@ const PreviewCourse = () => {
                                                             {item?.pdf3 != null ?
                                                                 <div>
                                                                     <PdfItem
+                                                                        lesson={item}
+                                                                        canAccess={canAccessResources}
                                                                         selected={false}
                                                                         number={4}
                                                                         downloaded={isDownloadedFunc(item?.pdf3)}
@@ -739,6 +936,8 @@ const PreviewCourse = () => {
                                                             {item?.pdf4 != null ?
                                                                 <div>
                                                                     <PdfItem
+                                                                        lesson={item}
+                                                                        canAccess={canAccessResources}
                                                                         selected={false}
                                                                         number={5}
                                                                         downloaded={isDownloadedFunc(item?.pdf4)}
@@ -750,6 +949,8 @@ const PreviewCourse = () => {
                                                             {item?.pdf5 != null ?
                                                                 <div>
                                                                     <PdfItem
+                                                                        lesson={item}
+                                                                        canAccess={canAccessResources}
                                                                         selected={false}
                                                                         number={6}
                                                                         downloaded={isDownloadedFunc(item?.pdf5)}
@@ -761,6 +962,8 @@ const PreviewCourse = () => {
                                                             {item?.pdf6 != null ?
                                                                 <div>
                                                                     <PdfItem
+                                                                        lesson={item}
+                                                                        canAccess={canAccessResources}
                                                                         selected={false}
                                                                         number={7}
                                                                         downloaded={isDownloadedFunc(item?.pdf6)}
@@ -772,6 +975,8 @@ const PreviewCourse = () => {
                                                             {item?.pdf7 != null ?
                                                                 <div>
                                                                     <PdfItem
+                                                                        lesson={item}
+                                                                        canAccess={canAccessResources}
                                                                         selected={false}
                                                                         number={8}
                                                                         downloaded={isDownloadedFunc(item?.pdf7)}
@@ -783,6 +988,8 @@ const PreviewCourse = () => {
                                                             {item?.pdf8 != null ?
                                                                 <div>
                                                                     <PdfItem
+                                                                        lesson={item}
+                                                                        canAccess={canAccessResources}
                                                                         selected={false}
                                                                         number={9}
                                                                         downloaded={isDownloadedFunc(item?.pdf8)}
@@ -794,9 +1001,8 @@ const PreviewCourse = () => {
                                                 </AccordionItem>
                                             })}
                                         </Accordion>
-                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     </div>
                 </div>

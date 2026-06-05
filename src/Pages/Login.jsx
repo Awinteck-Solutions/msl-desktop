@@ -1,128 +1,151 @@
-import { generateQRCode, windowsLogin } from "../Services/UserApi"
-import { Modal,
-    ModalOverlay,
-    ModalContent,
-    ModalHeader,
-    ModalFooter,
-    ModalBody,
-    ModalCloseButton, Spinner, 
-    useDisclosure} from "@chakra-ui/react"
-import { useEffect, useState } from "react";
-import { QRCodeSVG } from 'qrcode.react'
+import { generateQRCode, windowsLogin } from "../Services/UserApi";
+import {
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalCloseButton,
+  Spinner,
+  useDisclosure,
+} from "@chakra-ui/react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { QRCodeSVG } from "qrcode.react";
 import { useNavigate } from "react-router-dom";
 import { currentVersion } from "../version";
+import { clearSession, getOrCreateDeviceId, setStoredUser } from "../Services/session";
 
 const Login = () => {
-    const navigator = useNavigate();
-    const { isOpen, onOpen, onClose } = useDisclosure()
+  const navigator = useNavigate();
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const pollRef = useRef(null);
+  const codeIdRef = useRef(null);
 
-    const [isLoading, setIsLoading] = useState(false)
-    const [code, setCode] = useState();
+  const [isLoading, setIsLoading] = useState(false);
+  const [code, setCode] = useState();
 
-    let payload = {
-        "device_id": "e43c-5223c2-53c2-s456",
-        "device_name": "Dell X laptop",
-        "device_meta": "Windows 11, other device info"
+  const deviceId = getOrCreateDeviceId();
+  const payload = {
+    device_id: deviceId,
+    device_name: "MSL Desktop",
+    device_meta: typeof navigator !== "undefined" ? navigator.userAgent : "Electron",
+  };
+
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
     }
+  }, []);
 
-    let genCode = () => {
-        setIsLoading(true)
-        console.log('payload :>> ', payload);
-        generateQRCode(payload).then((res) => {
-            setIsLoading(false)
-            let data = res.response.response
-            console.log('res :>> ', data);
-            setCode(data)
-            onOpen()
+  const startPolling = useCallback(() => {
+    stopPolling();
+    const codeId = codeIdRef.current;
+    if (!codeId) return;
 
-            let looper = setInterval(() => {
-                console.log('data._id :>> ', data._id);
-                windowsLogin(data._id).then((response) => {
-                    console.log('windows-login-response :>> ', response);
-                    if (response.status) {
-                        let user = response.response.response;
-                        console.log('response :>> ', user);
-                        localStorage.setItem('user', JSON.stringify(user))
-                        
-                        clearInterval(looper)
+    pollRef.current = setInterval(() => {
+      windowsLogin(codeId).then((response) => {
+        if (response.status && response.response?.response) {
+          const user = response.response.response;
+          setStoredUser({
+            ...user,
+            token: user.token,
+            device_id: user.device_id || deviceId,
+          });
+          stopPolling();
+          onClose();
+          navigator("/");
+        }
+      });
+    }, 1000);
+  }, [deviceId, navigator, onClose, stopPolling]);
 
-                        navigator('/')
-                    }
-                })
-            }, [1000])
+  const handleModalClose = () => {
+    stopPolling();
+    onClose();
+  };
 
-        }).catch((error) => {
-            console.log('previewCourseCall error :>> ', error);
-            setIsLoading(false)
-        })
+  const genCode = () => {
+    setIsLoading(true);
+    generateQRCode(payload)
+      .then((res) => {
+        setIsLoading(false);
+        const data = res.response?.response;
+        if (!data?._id) return;
+        setCode(data);
+        codeIdRef.current = data._id;
+        onOpen();
+      })
+      .catch((error) => {
+        console.log("generateQRCode error :>> ", error);
+        setIsLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    clearSession();
+    return () => stopPolling();
+  }, [stopPolling]);
+
+  useEffect(() => {
+    if (isOpen) {
+      startPolling();
+    } else {
+      stopPolling();
     }
+  }, [isOpen, startPolling, stopPolling]);
 
-    useEffect(() => {
-        localStorage.setItem('user', null)
-    },[])
-
-    return(
-        <div>
-
-            {isLoading ?
-                <div className="text-center mt-20 m-auto">
-                    <Spinner size='xl'
-                        thickness='4px'
-                        speed='0.65s'
-                        emptyColor='gray.200'
-                            color='blue.500'
-                        />
-                </div>
-                :
-            <div className="md:grid md:gap-1 md:w-3/5 max-w-[400px]  bg-gray-100 p-1 rounded-2xl mx-auto my-10">
-                
-                <div className='p-10 bg-white rounded-xl text-center border'>
-                <div className='p-10 text-center'>
-                <img className=" object-fill w-28 m-auto" src="https://mslelearning.com/mslogo.png" alt="msl logo" />
-                    {/* <p className="text-[#22209C] font-bold text-3xl space-x-1">
-                        <span className="border-2 border-[#22209C] px-2">M</span>
-                        <span className="border-2 border-[#22209C] px-2">S</span>
-                        <span className="border-2 border-[#22209C] px-2">L</span> </p>
-                    <p className="text-gray-400 font-bold text-[10px] text-center">BUSINESS SCHOOL </p> */}
-                </div>
-                    <div className="text-left space-y-2">
-                        <p className='font-bold text-center text-lg'>Welcome back!</p>
-                       
-                        <ol type="numberic" className="text-left text-sm">
-                            <li> 1. Open your mobile app</li>
-                            <li> 2. Visit Menu tab </li>
-                            <li> 3. Click Windows App Login</li>
-                            <li> 4. Scan the Generated Code to Login</li>
-                        </ol>
-                    
-                    </div>
-                        <button
-                            onClick={()=>genCode()}
-                            className="bg-blue-700 hover:bg-blue-800 duration-200 w-full p-2 mt-6 rounded text-white"> Login </button>
-                </div>
-                <p className="text-center text-red-600 text-sm font-bold">NB:You require the mobile app to login</p>
-
-                <p className="text-md text-gray-700 my-3 text-center">Version {currentVersion}</p>
-                </div>         
-            }
-    <div>
-      <Modal isOpen={isOpen} onClose={onClose}>
+  return (
+    <div className="min-h-screen bg-msl-bg flex items-center justify-center p-6">
+      {isLoading ? (
+        <Spinner size="xl" thickness="4px" color="brand.500" />
+      ) : (
+        <div className="w-full max-w-md">
+          <div className="msl-card-elevated p-8 text-center">
+            <img
+              className="w-28 mx-auto object-contain"
+              src="https://mslelearning.com/mslogo.png"
+              alt="MSL"
+            />
+            <h1 className="text-2xl font-bold text-msl-text mt-6">Welcome back</h1>
+            <p className="text-sm text-msl-muted mt-2">
+              Sign in with your MSL mobile app
+            </p>
+            <ol className="text-left text-sm text-msl-muted space-y-2 mt-6 list-decimal list-inside">
+              <li>Open your mobile app</li>
+              <li>Visit the Menu tab</li>
+              <li>Tap Windows App Login</li>
+              <li>Scan the generated code</li>
+            </ol>
+            <button
+              type="button"
+              onClick={() => genCode()}
+              className="msl-btn-primary w-full mt-8 py-3"
+            >
+              Generate login code
+            </button>
+          </div>
+          <p className="text-center text-msl-warning text-sm font-medium mt-4">
+            You need the mobile app to sign in
+          </p>
+          <p className="text-center text-msl-muted text-sm mt-2">
+            Version {currentVersion}
+          </p>
+        </div>
+      )}
+      <Modal isOpen={isOpen} onClose={handleModalClose}>
         <ModalOverlay />
         <ModalContent>
           <ModalHeader>Scan with your Mobile App</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
-                {/* <p className="text-center">{code?.code}</p> */}
-                <div className="m-auto my-10 w-fit bg-red-400 text-center" >
-                    <QRCodeSVG value={code?.code} />     
-                </div>
+            <div className="m-auto my-10 w-fit text-center">
+              <QRCodeSVG value={code?.code} />
+            </div>
           </ModalBody>
-         
         </ModalContent>
       </Modal>
     </div>
-
-        </div>
-    )
-}
-export default Login
+  );
+};
+export default Login;

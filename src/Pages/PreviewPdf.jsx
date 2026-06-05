@@ -8,8 +8,13 @@ import { Viewer, Worker, ProgressBar } from '@react-pdf-viewer/core';
 import { defaultLayoutPlugin } from '@react-pdf-viewer/default-layout';
 import { zoomPlugin } from '@react-pdf-viewer/zoom';
 import { fullScreenPlugin } from '@react-pdf-viewer/full-screen';
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Progress } from '@chakra-ui/react'
+import { mediaUrl } from "../Services/apiConfig";
+import { fetchEnrolledCourseIds } from "../Services/CourseApi";
+import { getStoredUser } from "../Services/session";
+import { useMslAi } from "../Context/MslAiContext";
+import { normalizeS3Key } from "../utils/s3Key";
 
 
 const PreviewPdf = () => {
@@ -19,9 +24,33 @@ const PreviewPdf = () => {
     console.log('online, state', state, location)
     const navigator = useNavigate()
 
-    let file = state.data.split('/')
-    let pdfFile = file[file.length - 1];
-    console.log('fileName: ', pdfFile)
+    const onlinePdfUrl = state?.online && state?.data ? mediaUrl(state.data) : null;
+    const [blocked, setBlocked] = useState(false);
+    const { setAiScope } = useMslAi();
+
+    useEffect(() => {
+        if (!getStoredUser()?.token) {
+            navigator('/login');
+            return;
+        }
+        if (state?.data) {
+            const pdfKey = normalizeS3Key(state.data);
+            setAiScope({
+                courseId: String(id),
+                s3Keys: pdfKey ? [pdfKey] : [],
+                label: "Current PDF",
+                source: "page",
+                resourceType: "pdf",
+            });
+        }
+        if (!state?.online) return;
+        fetchEnrolledCourseIds().then((ids) => {
+            if (!ids.has(String(id))) {
+                setBlocked(true);
+                navigator(`/course/preview/${id}`);
+            }
+        });
+    }, [id, navigator, state?.online, state?.data, setAiScope]);
 
     const defaultLayout = defaultLayoutPlugin({
         toolbarPlugin: {
@@ -103,7 +132,9 @@ const PreviewPdf = () => {
                     </div>
                     <p className='p-2 font-medium'>Page {1}/ {pageNumber}</p>
                 </div>
-                {pdfError ? (
+                {blocked ? (
+                    <p className="text-center p-5 text-gray-600">Redirecting…</p>
+                ) : pdfError ? (
                     <p className="text-red-500 text-center p-5 w-full">Sorry, Please check your internet connection.</p>
                 ) : (
                     <Worker workerUrl="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js">
@@ -125,7 +156,7 @@ const PreviewPdf = () => {
                                     </div>
                                 )}
                                 onDocumentLoad={handleDocumentLoad}
-                                fileUrl={state.online? `https://api.mslelearning.com/pdf/${pdfFile}`: state.data}
+                                fileUrl={state.online ? onlinePdfUrl : state.data}
                                 // fileUrl={"C:/Users/awins/Downloads/dummy.pdf"}
                                 // fileUrl={`${resBaseUrl}/pdf/${pdfFile}`}
                                 // fileUrl={bucketPdf}

@@ -1,28 +1,42 @@
-import { Link } from "react-router-dom"
-// import apiEndpoints from '../../Services/apiConfig'
+import { Link } from "react-router-dom";
+import StatusBadge from "../UI/StatusBadge";
 
-export default function ItemView({image,title,lessons,link,category=[],description=''}) { 
-    return <>
-        <div className="w-[300px] bg-white inline-block border shadow rounded-md h-fit p-2 hover:border hover:border-blue-400 duration-300">
-            <div className="rounded bg-gray-200 h-[11rem]">
-                <img className="h-full w-full object-cover" src={ image } alt="" />
-            </div>
-            <div className=" relative space-y-2">
-                <p className="font-bold text-black">{title}</p>
-                <div className=" w-full">
-                    <p className="text-sm text-gray-600">{description?.substring(0,100) }...</p>
-                </div>
-
-                <div className="flex space-x-2">
-                    {category?.slice(0,3).map((value,index) => {
-                        return <p key={index} className="text-[12px] cursor-default rounded border text-white bg-[#336699] p-1">{ value }</p>
-                    })}
-                </div>
-
-                <div className="pt-5"></div>
-                {/* <Link className="text-sm text-green-700 rounded border border-green-700 hover:bg-green-700 hover:text-white duration-300 font-bold uppercase p-1" to={link} target='_blank'>Register</Link> */}
-                <p className="absolute bottom-0 right-0 bg-gray-200 rounded-3xl px-3 py-[6px] cursor-default" >{ lessons } Lessons </p>
-            </div>
-        </div>
-    </>
+export default function ItemView({
+  image,
+  title,
+  description = "",
+  route = "/course/general/",
+  lessons = 0,
+  isEnrolled = false,
+}) {
+  return (
+    <div className="w-[280px] glass-card overflow-hidden hover:shadow-glow-indigo-soft transition group">
+      <div className="aspect-[4/3] bg-brand/10 overflow-hidden relative">
+        <img
+          className="h-full w-full object-cover group-hover:scale-105 transition duration-300"
+          src={image}
+          alt=""
+        />
+        {isEnrolled ? (
+          <StatusBadge status="completed" className="absolute top-2 right-2">
+            Enrolled
+          </StatusBadge>
+        ) : null}
+      </div>
+      <div className="p-4 space-y-2">
+        <p className="font-display font-semibold text-msl-text line-clamp-2">{title}</p>
+        <p className="text-sm text-msl-muted line-clamp-2">
+          {(description || "").substring(0, 100)}
+          {(description || "").length > 100 ? "…" : ""}
+        </p>
+        <p className="text-xs text-msl-muted font-mono">{lessons} lessons</p>
+        <Link
+          className="inline-flex text-sm text-brand font-semibold hover:underline"
+          to={route}
+        >
+          View course →
+        </Link>
+      </div>
+    </div>
+  );
 }

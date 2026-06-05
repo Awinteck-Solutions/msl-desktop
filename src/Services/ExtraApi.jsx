@@ -1,102 +1,35 @@
-import axios from "axios";
+import { apiClient, publicClient } from "./apiClient";
 import apiEndpoints from "./apiConfig";
+import { getStoredUser } from "./session";
 
-
-
-//  FEEDBACK LIST
-export const feedbackList = async () => {
-    try {
-      const response = await axios.get(
-        apiEndpoints.feedbackList
-      );
-      if (response.status == 200) {
-        return {
-          status: true,
-          response: response.data,
-        };
-      } else if (response.status == 404) {
-        return {
-          status: true,
-          message: response.data.msg,
-        };
-      } else {
-        return null;
-      }
-    } catch (error) {
-      throw error;
-    }
-}; 
-   
-//  SEND FEEDBACK
-export const sendFeedback = async (data) => {
-    try {
-      const response = await axios.post(
-        apiEndpoints.sendFeedback,
-        data
-      );
-      if (response.status == 201) {
-        return {
-          status: true,
-          response: response.data,
-        };
-      } else if (response.status == 404) {
-        return {
-          status: true,
-          message: response.data.msg,
-        };
-      } else {
-        return null;
-      }
-    } catch (error) {
-      throw error;
-    }
-}; 
-   
-//  SEND REQUEST
-export const sendRequest = async (data) => {
-    try {
-      const response = await axios.post(
-        apiEndpoints.update,
-        data
-      );
-      if (response.status == 200) {
-        return {
-          status: true,
-          response: response.data,
-        };
-      } else if (response.status == 404) {
-        return {
-          status: true,
-          message: response.data.msg,
-        };
-      } else {
-        return null;
-      }
-    } catch (error) {
-      throw error;
-    }
+export const sendFeedback = async ({ type, phone, message }) => {
+  const user = getStoredUser();
+  const response = await apiClient.post(apiEndpoints.sendFeedback, {
+    type,
+    phone,
+    message,
+    user_id: user?._id,
+  });
+  if (response.status === 200 || response.status === 201) {
+    return { status: true, response: response.data };
+  }
+  return { status: false, response: response.data };
 };
 
-//  FEEDBACK LIST
-export const updateAvailableCall = async () => {
-  try {
-    const response = await axios.get(
-      apiEndpoints.updateAvailable
-    );
-    if (response.status == 200) {
-      return {
-        status: true,
-        response: response.data,
-      };
-    } else if (response.status == 404) {
-      return {
-        status: true,
-        message: response.data.msg,
-      };
-    } else {
-      return null;
-    }
-  } catch (error) {
-    throw error;
+export const sendRequest = async (data) => {
+  const response = await apiClient.post(apiEndpoints.sendRequest, data);
+  if (response.status === 200 || response.status === 201) {
+    return { status: true, response: response.data };
   }
-}; 
+  return { status: false, response: response.data };
+};
+
+export const updateAvailableCall = async (osVersion = "windows") => {
+  const response = await publicClient.get(apiEndpoints.updateAvailable, {
+    params: { osVersion },
+  });
+  if (response.status === 200) {
+    return { status: true, response: response.data };
+  }
+  return { status: false, response: response.data };
+};

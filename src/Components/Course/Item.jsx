@@ -1,28 +1,50 @@
-import { Link } from "react-router-dom"
-import apiEndpoints from '../../Services/apiConfig'
+import { Link } from "react-router-dom";
+import IndigoProgress from "../UI/IndigoProgress";
 
-export default function Item({image,title,date, category=[],description='',route='/course/general/'}) { 
-    return <div>
-        <div className="w-[300px] bg-white inline-block border shadow rounded-md h-fit p-2 hover:border hover:border-blue-400 duration-300">
-            <div className="rounded bg-gray-200 h-[11rem]">
-                <img className="h-full w-full object-cover" src={image} alt="" />
+export default function Item({
+  image,
+  title,
+  description = "",
+  route = "/course/general/",
+  progress,
+}) {
+  const pct = progress?.percentage ?? 0;
+  const completed = progress?.completed ?? 0;
+  const total = progress?.total ?? 0;
+
+  return (
+    <div className="w-[280px] glass-card overflow-hidden hover:shadow-glow-indigo-soft transition group">
+      <div className="aspect-[4/3] bg-brand/10 overflow-hidden">
+        <img
+          className="h-full w-full object-cover group-hover:scale-105 transition duration-300"
+          src={image}
+          alt=""
+        />
+      </div>
+      <div className="p-4 space-y-2">
+        <p className="font-display font-semibold text-msl-text line-clamp-2">{title}</p>
+        <p className="text-sm text-msl-muted line-clamp-2">
+          {(description || "").substring(0, 100)}
+          {(description || "").length > 100 ? "…" : ""}
+        </p>
+        {total > 0 ? (
+          <div className="space-y-1.5 pt-1">
+            <div className="flex justify-between text-xs text-msl-muted">
+              <span>
+                {completed} / {total} lessons
+              </span>
+              <span className="font-mono tabular-nums text-brand">{Math.round(pct)}%</span>
             </div>
-            <div className=" relative space-y-2">
-                <p className="font-bold text-black">{title}</p>
-                <div className=" w-full">
-                    <p className="text-sm text-gray-600">{description.substring(0,100) }...</p>
-                </div>
-
-                <div className="flex space-x-2">
-                    {category.slice(0,3).map((value,index) => {
-                        return <p key={index} className="text-[12px] cursor-default rounded border text-white bg-[#336699] p-1">{ value }</p>
-                    })}
-                </div>
-
-                <div className="pt-5"></div>
-                <p className="text-sm text-[#336699] font-extrabold uppercase">{date}</p>
-                <Link className="absolute bottom-0 right-0 bg-gray-200 rounded-3xl px-3 py-[6px] hover:bg-[#336699] hover:text-white duration-200" to={route}>View Details</Link>
-            </div>
-        </div>
+            <IndigoProgress value={pct} />
+          </div>
+        ) : null}
+        <Link
+          className="inline-flex mt-2 text-sm text-brand font-semibold hover:underline"
+          to={route}
+        >
+          Continue learning →
+        </Link>
+      </div>
     </div>
+  );
 }

@@ -1,5 +1,5 @@
 // major - client requested updates
-export const previousVersion = "1.2.3"
+export const previousVersion = "1.2.5"
 
 // minor - adding versioning to login page
-export const currentVersion = "1.2.4"
+export const currentVersion = "2.0.0"

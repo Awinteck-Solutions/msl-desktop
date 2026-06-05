@@ -1,93 +1,107 @@
-import { Divider } from '@chakra-ui/react'
-import { Link } from 'react-router-dom';
-import 'animate.css';
-import { Spinner  } from '@chakra-ui/react'
-import {
-    Input,Textarea,Select,
-} from '@chakra-ui/react'
-import { useState ,useEffect} from 'react'
-import SideBar from '../Components/General/SideBar';
+import { Spinner, Input, Textarea, Select, useToast } from "@chakra-ui/react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import AppShell from "../Components/Layout/AppShell";
+import { sendFeedback } from "../Services/ExtraApi";
+import { getStoredUser } from "../Services/session";
 
 const Feedback = () => {
-     // Check if user is logged in
-     let user = JSON.parse(localStorage.getItem('profile'))
+  const navigator = useNavigate();
+  const toast = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [message, setMessage] = useState("");
+  const [type, setType] = useState("");
 
-     const [isLoggedIn, setIsLoggedIn] = useState(false)
-    const [isLoading, setIsLoading] = useState(false)
-    
+  const feedbackTypes = [
+    "Report a bug",
+    "Course Enrolment",
+    "Suggest Improvement",
+    "Request a feature",
+    "Course content",
+    "Others",
+  ];
 
+  useEffect(() => {
+    if (!getStoredUser()?.token) {
+      navigator("/login");
+    }
+  }, [navigator]);
 
-    const [phone, setPhone] = useState('')
-    const [message, setMessage] = useState('')
-    const [type, setType] = useState('')
+  const onSubmit = () => {
+    if (!type || !phone.trim() || !message.trim()) {
+      toast({
+        title: "Please fill in all fields",
+        status: "warning",
+        duration: 3000,
+      });
+      return;
+    }
+    setIsLoading(true);
+    sendFeedback({ type, phone: phone.trim(), message: message.trim() })
+      .then((res) => {
+        if (res.status) {
+          toast({
+            title: "Feedback sent successfully",
+            status: "success",
+            duration: 4000,
+          });
+          setPhone("");
+          setMessage("");
+          setType("");
+        } else {
+          toast({
+            title: res.response?.message || "Failed to send feedback",
+            status: "error",
+            duration: 4000,
+          });
+        }
+      })
+      .catch(() =>
+        toast({ title: "Failed to send feedback", status: "error" })
+      )
+      .finally(() => setIsLoading(false));
+  };
 
-    const [statusShow, setStatusShow] = useState(false)
-    const [statusMessage, setStatusMessage] = useState('')
-
-    const feedbackTypes = [
-        'Report a bug', 'Course Enrolment', 
-        'Suggest Improvement', 'Request a feature',
-        'Course content', 'Others'
-    ]
-
-    
-
-
-    return (
-        <div className="flex gap-1 ">
-            <div className="min-w-[300px]">
-                <SideBar feedback={ true } />
-            </div>
-
-            <div className="w-full bg-white">
-            <div className=' py-10 px-4  text-black'>
-                    <div>
-                        <h1 className="font-bold  text-lg text-center">Submit Your Feedback Here!</h1>
-                   
-                    </div>
-                    
-                    {isLoading? <div className='text-center '>
-                        <Spinner size='xl'
-                         thickness='4px'
-                         speed='0.65s'
-                         emptyColor='gray.200'
-                            color='blue.500'
-                        />
-                    </div>
-                        :
-                        <div className='lg:m-auto mx-5 space-y-2 bg-white lg:p-5 rounded min-w-[450px]'>
-                            {statusShow? <p className='bg-blue-800 text-white p-2 w-fit m-auto rounded'> { statusMessage} </p>: ''}
-                        <div className='lg:grid grid-cols-2 gap-3 lg:space-y-0 space-y-2'>
-                            <div className='text-black'>
-                                <Select style={{height:'3em',color:'black'}} onChange={(e) => setType(e.target.value)} placeholder='Select option'>
-                                    {feedbackTypes.map((value,index) => {
-                                        return  <option key={index} value={value}>{value}</option>
-                                    })}
-                                </Select> 
-                            </div>
-                            
-                            <Input onChange={(e) => {setPhone(e.target.value) }} placeholder='Phone' size='lg' className='' />
-                                        
-                        </div>
-                        <div>
-                        <Textarea onChange={(e) => {setMessage(e.target.value)  }} placeholder='Message' height={'240px'} />
-                                            
-                        </div>
-                        <div>
-                                <button
-                                    className='rounded border text-white bg-[#336699] w-full p-2'
-                                    // onClick={() => { SendFeedbackAPI() }}
-                                >
-                                    Send Feedback
-                                </button>
-                        </div>
-                        </div>
-                     }
-                </div>
-            </div>
+  return (
+    <AppShell active={{ feedback: true }} title="Feedback" subtitle="We'd love to hear from you">
+      {isLoading ? (
+        <div className="text-center py-20">
+          <Spinner size="xl" color="brand.500" />
         </div>
-        
-    )
-}
+      ) : (
+        <div className="max-w-xl space-y-4 msl-card p-6">
+          <div className="grid sm:grid-cols-2 gap-3">
+            <Select
+              placeholder="Select type"
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+            >
+              {feedbackTypes.map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </Select>
+            <Input
+              placeholder="Phone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+            />
+          </div>
+          <Textarea
+            placeholder="Message"
+            height="200px"
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+          />
+          <button type="button" className="msl-btn-primary w-full py-3" onClick={onSubmit}>
+            Send feedback
+          </button>
+        </div>
+      )}
+    </AppShell>
+  );
+};
 
 export default Feedback;

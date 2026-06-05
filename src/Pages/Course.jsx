@@ -1,201 +1,79 @@
-import { Button, InputGroup, InputLeftElement, Input, Spinner} from "@chakra-ui/react";
-import SideBar from "../Components/General/SideBar";
-import Item from "../Components/Course/Item";
+import AppShell from "../Components/Layout/AppShell";
 import ItemView from "../Components/Course/ItemView";
-import { Link } from "react-router-dom";
-import { categoryList, courseList, userCourseList } from "../Services/CourseApi";
+import { CourseCardSkeleton } from "../Components/UI/Skeleton";
+import { courseList, fetchEnrolledCourseIds } from "../Services/CourseApi";
 import { useEffect, useState } from "react";
-import apiEndpoints from "../Services/apiConfig";
-
-
+import { mediaUrl } from "../Services/apiConfig";
+import { getStoredUser } from "../Services/session";
+import { useNavigate } from "react-router-dom";
+import { matchesSearch } from "../utils/practiceSearch";
 
 const Course = () => {
-    
-    const [isLoadingCourse, setLoadingCourse] = useState(true);
-    const [isLoading, setLoading] = useState(true);
-    const [courses, setCourses] = useState([]);
-    let [originalData, setOriginalData] = useState([]); 
-    const [category, setCategory] = useState([]);
-    const [categoryTab, setCategoryTab] = useState('all')
+  const navigator = useNavigate();
+  const [isLoadingCourse, setLoadingCourse] = useState(true);
+  const [courses, setCourses] = useState([]);
+  const [enrolledIds, setEnrolledIds] = useState(new Set());
+  const [search, setSearch] = useState("");
 
-    // ---------------------API CALLS--------------------------//
+  const filteredCourses = courses.filter((course) =>
+    matchesSearch(search, course.title, course.description)
+  );
 
-    
-
-    
-    const getCategoryCall = () => {
-        categoryList().then((response) => {
-            setCategory(response.response);
-            setLoading(false)
-            console.log('getCategoryCall response :>> ', response.response);
-
-            getCoursesCall()
-
-        }).catch((error) => {
-            console.log('getCategoryCall error :>> ', error);
-            setLoading(false)
-        })
+  useEffect(() => {
+    if (!getStoredUser()?.token) {
+      navigator("/login");
+      return;
     }
+    courseList()
+      .then((response) => {
+        setCourses(response.response);
+        setLoadingCourse(false);
+      })
+      .catch(() => setLoadingCourse(false));
+    fetchEnrolledCourseIds().then(setEnrolledIds).catch(() => {});
+  }, [navigator]);
 
-    const getCoursesCall = () => {
-        courseList().then((response) => {
-            setCourses(response.response);
-            setLoadingCourse(false)
-            setOriginalData(response.response)
-            console.log('getCoursesCall response :>> ', response.response);
-        }).catch((error) => {
-            console.log('getCoursesCall error :>> ', error);
-            setLoadingCourse(false)
-        })
-    }
-    const onCategorySelected = (category) => { 
-        console.log('category :>> ', category);
-        console.log('originalData :>> ', originalData);
-        console.log('courses :>> ', courses);
-
-
-        setCategoryTab(category)
-        let list = originalData.filter((value) => { 
-            if (value.categoryId.name == category) return value;
-            else if (category == 'all') return courses;
-        });
-        setCourses(list)
-    }
-
-    // ---------------------API CALLS-------------------------- //
-    
-    
-    useEffect(() => {
-        getCategoryCall()
-       
-    }, [])
-    
-
-   const CategoryBar = () => {
-
-        
-        return <>
-         <div className="flex flex-wrap gap-2 space-x-4 mt-10">
-         <p
-                    onClick={() => {
-                        onCategorySelected('all')
-                                }}
-                    className={
-                        categoryTab=='all' ?
-                        "bg-[#336699] text-nowrap hover:bg-[#336699] hover:text-white duration-200 cursor-pointer border-2 border-[#336699] text-white rounded-3xl p-2 min-w-28 w-fit h-fit text-center font-semibold"
-                        :
-                        "hover:bg-[#336699] text-nowrap hover:text-white duration-200 bg-white cursor-pointer border-2 border-[#336699] text-[#336699] rounded-3xl p-2 min-w-28 w-fit h-fit text-center font-semibold"
-                    }
-                >ALL</p>
-                {category?.sort((a,b)=> Number(a.position) - Number(b.position)).map((item)=>{
-                    return     <p
-                    onClick={() => {
-                        onCategorySelected(item.name)
-                                 }}
-                                 className={
-                                    categoryTab==item.name ?
-                                    "bg-[#336699] text-nowrap hover:bg-[#336699] hover:text-white duration-200 border-2 border-[#336699] text-white rounded-3xl p-2 min-w-28 w-fit h-fit text-center font-semibold"
-                                    :
-                                    "hover:bg-[#336699] text-nowrap hover:text-white duration-200 bg-white cursor-pointer border-2 border-[#336699] text-[#336699] rounded-3xl p-2  min-w-28 w-fit h-fit text-center font-semibold"
-                                }
-                >{item.name}</p>
-                })} 
-    
-                        </div>
-        </>
-    }
-     
-     
-    return <>
-        <div className="flex gap-1 ">
-            <div className="min-w-[250px]">
-                <SideBar course={ true } />
-            </div>
-
-            <div className="w-full bg-gray-50 overflow-scroll h-screen">
-
-                {/* Heading */}
-                <div className="m-2 mt-4">
-                    <div className="flex justify-between">
-                        <h1 className="text-2xl font-bold">All Courses</h1>
-
-                        <div>
-                        <InputGroup>
-                            <InputLeftElement pointerEvents='none'>
-                                <span>
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M17.5 17.5L22 22m-2-11a9 9 0 1 0-18 0a9 9 0 0 0 18 0" color="currentColor"/></svg>
-                                </span>
-                            </InputLeftElement>
-                            <Input type='text' placeholder='Search' />
-                        </InputGroup>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Main Body */}
-                <div className="mx-3">
-
-                    {/* Categories */}
-                    
-                    <CategoryBar/>
-                    
-                  
-                    {/* All courses */}
-
-                    <div className=" mt-5 ">
-                        
-                        <div className="flex flex-row flex-wrap">
-                            {isLoadingCourse ? 
-                                <div className="text-center m-auto">
-                                     <Spinner size='xl'
-                                        thickness='4px'
-                                        speed='0.65s'
-                                        emptyColor='gray.200'
-                                            color='blue.500'
-                                        />
-                                </div>
-                            : 
-                            
-                        courses?.map((value) => { 
-                            let image=`${apiEndpoints.bucketUrl}/${value.thumbnail?.replace("public/res/", "")}`
-                            console.log('IMAGE :>> ', image);
-                            console.log('REPLACE :>> ', value.thumbnail?.replace("public/res/", ""));
-
-                              return  <div className="flex-initial min-w-[300px] m-1">
-                                  <ItemView
-                                      link={value.link}
-                                // image={`https://api.mslelearning.com/${value.thumbnail}`}
-                                image={`${apiEndpoints.bucketUrl}/${value.thumbnail?.replace("public/res/", "")}`}
-                                title={value.title}
-                                description={value.description}
-                                    price={value.price}
-                                    category={[value.categoryId.name]}
-                                    rating={4.5}
-                                    lessons={value.lessons}
-                                enrolled={100}
-                            />
-                                </div>
-                        })
-                        }
-                            
-                            {
-                            !isLoadingCourse && courses?.length == 0 ? 
-                                <div className="my-10 bg-white p-10 rounded-[100px] mx-auto">
-                                    <p className="text-xl font-bold text-center">Not Available</p>
-                                </div>
-                                : ''
-                        }
-                      </div>
-                    </div>
-
-                </div>
-              
-                  
-            </div>
-            
-        </div>
-    </>
- }
+  return (
+    <AppShell
+      active={{ course: true }}
+      title="All courses"
+      subtitle="Browse and preview available programmes"
+      headerRight={
+        <input
+          type="text"
+          placeholder="Search courses…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="rounded-msl border border-msl-border bg-msl-surface px-4 py-2 text-sm text-msl-text placeholder:text-msl-muted focus:outline-none focus:border-msl-primary/50 w-56"
+        />
+      }
+    >
+      <div className="flex flex-wrap gap-4">
+        {isLoadingCourse ? (
+          Array.from({ length: 6 }).map((_, i) => <CourseCardSkeleton key={i} />)
+        ) : filteredCourses.length ? (
+          filteredCourses.map((value) => {
+            const courseId = String(value._id);
+            return (
+              <ItemView
+                key={courseId}
+                route={`/course/preview/${courseId}`}
+                image={mediaUrl(value.thumbnail)}
+                title={value.title}
+                description={value.description}
+                lessons={value.lessons ?? 0}
+                isEnrolled={enrolledIds.has(courseId)}
+              />
+            );
+          })
+        ) : (
+          <div className="msl-card p-12 w-full text-center">
+            <p className="text-lg font-medium text-msl-text">No courses found</p>
+          </div>
+        )}
+      </div>
+    </AppShell>
+  );
+};
 
 export default Course;
-

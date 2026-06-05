@@ -14,6 +14,8 @@ const creatWindow = () => {
         title: 'MSL Business School',
         width: 1400,
         height: 1000,
+        minWidth: 800,
+        minHeight: 600,
         icon: path.join(__dirname, '../public/mslogo.png'),
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
@@ -34,7 +36,7 @@ const creatWindow = () => {
     console.log('appPath :> ', appPath, urlPath);
     win.loadFile(appPath);
 
-    // win.webContents.openDevTools();
+    win.webContents.openDevTools();
 };
 
 const template = [];
