@@ -4,7 +4,7 @@ const primary = "#201895";
 
 export const chakraTheme = extendTheme({
   config: {
-    initialColorMode: "dark",
+    initialColorMode: "light",
     useSystemColorMode: false,
   },
   fonts: {

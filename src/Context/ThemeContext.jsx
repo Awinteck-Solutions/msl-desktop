@@ -15,7 +15,7 @@ export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored === "dark" || stored === "light") return stored;
-    return "dark";
+    return "light";
   });
 
   useEffect(() => {
