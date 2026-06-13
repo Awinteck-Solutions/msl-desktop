@@ -38,34 +38,57 @@ export function xpProgress(totalXp = 0, nextLevelXp = 0) {
 
 export const WEEK_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+/** Monday = 0 … Sunday = 6 */
+function weekDayIndex(date) {
+  return (date.getDay() + 6) % 7;
+}
+
+/**
+ * Weekday indices (0–6) covered by the streak: N consecutive calendar days
+ * ending today, or ending yesterday when streakAtRisk (today not yet counted).
+ * Works for any streak length; only seven columns exist so we stop after 7.
+ */
+export function getStreakCompleteIndices(currentStreak = 0, streakAtRisk = false) {
+  const streak = Math.max(0, Number(currentStreak) || 0);
+  if (streak === 0) return new Set();
+
+  const completeIndices = new Set();
+  const end = new Date();
+  end.setHours(12, 0, 0, 0);
+  if (streakAtRisk) {
+    end.setDate(end.getDate() - 1);
+  }
+
+  const daysToMark = Math.min(streak, WEEK_DAYS.length);
+  for (let d = 0; d < daysToMark; d++) {
+    const date = new Date(end);
+    date.setDate(end.getDate() - d);
+    completeIndices.add(weekDayIndex(date));
+  }
+
+  return completeIndices;
+}
+
 /** Derive Mon–Sun badge states from streak count (no per-day API). */
 export function getWeekDayStates(currentStreak = 0, streakAtRisk = false) {
-  const streak = Math.max(0, Number(currentStreak) || 0);
-  const todayIdx = (new Date().getDay() + 6) % 7;
+  const todayIdx = weekDayIndex(new Date());
+  const completeIndices = getStreakCompleteIndices(currentStreak, streakAtRisk);
 
   return WEEK_DAYS.map((label, i) => {
     const isToday = i === todayIdx;
+
+    if (completeIndices.has(i)) {
+      return { label, status: "complete", isToday };
+    }
+
+    if (isToday) {
+      return { label, status: "today", isToday };
+    }
 
     if (i > todayIdx) {
       return { label, status: "future", isToday };
     }
 
-    if (isToday) {
-      return {
-        label,
-        status: streakAtRisk || streak === 0 ? "today" : "complete",
-        isToday,
-      };
-    }
-
-    const daysFromIToYesterday = todayIdx - i;
-    const required = streakAtRisk ? daysFromIToYesterday : daysFromIToYesterday + 1;
-    const complete = streak >= required;
-
-    return {
-      label,
-      status: complete ? "complete" : "missed",
-      isToday,
-    };
+    return { label, status: "missed", isToday };
   });
 }
