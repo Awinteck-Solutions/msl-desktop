@@ -1,5 +1,6 @@
 import { apiClient, getAuthHeaders } from "./apiClient";
 import apiEndpoints from "./apiConfig";
+import { normalizeS3Key } from "../utils/s3Key";
 import { consumeSseStream } from "../utils/sseParser";
 
 function jsonHeaders() {
@@ -22,9 +23,16 @@ async function parseErrorResponse(response) {
 
 export function buildScopePayload(scope = {}) {
   const payload = {};
-  if (scope.courseId) payload.courseId = scope.courseId;
-  if (scope.lessonId) payload.lessonId = scope.lessonId;
-  if (scope.s3Keys?.length) payload.s3Keys = scope.s3Keys;
+  const courseId = scope.courseId ? String(scope.courseId) : null;
+  const lessonId = scope.lessonId ? String(scope.lessonId) : null;
+  if (courseId) payload.courseId = courseId;
+  if (lessonId) payload.lessonId = lessonId;
+  // File keys only apply when scoping a lesson/resource, not whole-course summarize.
+  if (lessonId && scope.s3Keys?.length) {
+    payload.s3Keys = scope.s3Keys.map((k) => normalizeS3Key(k)).filter(Boolean);
+  } else if (!courseId && scope.s3Keys?.length) {
+    payload.s3Keys = scope.s3Keys.map((k) => normalizeS3Key(k)).filter(Boolean);
+  }
   return payload;
 }
 
