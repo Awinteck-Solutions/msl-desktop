@@ -78,6 +78,27 @@ const apiEndpoints = {
   geminiSummarize: `${v2}/gemini-ai/summarize`,
   geminiGenerateFlashcards: `${v2}/gemini-ai/generate-flashcards`,
   geminiGenerateQuiz: `${v2}/gemini-ai/generate-quiz`,
+
+  // AI subscription (no payment flows on desktop)
+  subscriptionPlan: `${v2}/subscription/plan`,
+  subscriptionStatus: `${v2}/subscription/status`,
+  subscriptionResources: `${v2}/subscription/resources`,
+  subscriptionCancel: `${v2}/subscription/cancel`,
+
+  subscriptionAiHistory: `${v2}/subscription-ai/history`,
+  subscriptionAiRecentActivity: `${v2}/subscription-ai/recent-activity`,
+  subscriptionAiContextStream: `${v2}/subscription-ai/query-general-context-stream`,
+  subscriptionAiContextAudioStream: `${v2}/subscription-ai/query-general-context-audio-text-stream`,
+  subscriptionAiQueryImage: `${v2}/subscription-ai/query-image`,
+  subscriptionAiVoiceToText: `${v2}/subscription-ai/voice-to-text`,
+  subscriptionAiSummarize: `${v2}/subscription-ai/summarize`,
+  subscriptionAiGenerateFlashcards: `${v2}/subscription-ai/generate-flashcards`,
+  subscriptionAiGenerateQuiz: `${v2}/subscription-ai/generate-quiz`,
+
+  // Past questions
+  pastQuestionsTree: `${v2}/past-questions`,
+  pastQuestionPaper: `${v2}/past-questions`,
+  pastQuestionChat: `${v2}/past-questions/chat`,
 };
 
 export default apiEndpoints;

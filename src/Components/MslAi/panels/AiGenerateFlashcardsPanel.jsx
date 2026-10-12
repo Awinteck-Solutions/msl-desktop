@@ -12,8 +12,14 @@ import {
   generateFlashcards,
   hasAiScope,
 } from "../../../Services/GeminiApi";
+import SubscriptionAiScopePicker from "../SubscriptionAiScopePicker";
+import {
+  buildSubscriptionScopePayload,
+  subscriptionGenerateFlashcards,
+} from "../../../Services/SubscriptionAiApi";
 
-export default function AiGenerateFlashcardsPanel({ isOpen, onClose, onBack }) {
+export default function AiGenerateFlashcardsPanel({ isOpen, onClose, onBack, variant = "course" }) {
+  const isSubscription = variant === "subscription";
   const toast = useToast();
   const { scope } = useMslAi();
   const [count, setCount] = useState(10);
@@ -30,16 +36,21 @@ export default function AiGenerateFlashcardsPanel({ isOpen, onClose, onBack }) {
   }, [isOpen]);
 
   const handleGenerate = async () => {
-    if (!hasAiScope(scope)) {
+    if (!isSubscription && !hasAiScope(scope)) {
       toast({ title: "Select a content source first", status: "warning" });
       return;
     }
     setLoading(true);
-    const res = await generateFlashcards({
-      ...buildScopePayload(scope),
-      count,
-      courseIdForLink: scope.courseId,
-    });
+    const res = isSubscription
+      ? await subscriptionGenerateFlashcards({
+          ...buildSubscriptionScopePayload(scope),
+          count,
+        })
+      : await generateFlashcards({
+          ...buildScopePayload(scope),
+          count,
+          courseIdForLink: scope.courseId,
+        });
     setLoading(false);
     if (res.status) {
       const cards = res.response?.response?.flashcards || [];
@@ -75,12 +86,18 @@ export default function AiGenerateFlashcardsPanel({ isOpen, onClose, onBack }) {
             <div>
               <p className="text-sm font-semibold text-msl-text">AI flashcard deck</p>
               <p className="text-xs text-msl-muted mt-0.5">
-                Pick any course or lesson below, then generate and practice.
+                {isSubscription
+                  ? "Pick subscriber content below, then generate and practice."
+                  : "Pick any course or lesson below, then generate and practice."}
               </p>
             </div>
           </div>
 
-          <AiGenerateScopePicker panelOpen={isOpen} />
+          {isSubscription ? (
+            <SubscriptionAiScopePicker panelOpen={isOpen} />
+          ) : (
+            <AiGenerateScopePicker panelOpen={isOpen} />
+          )}
 
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -104,7 +121,7 @@ export default function AiGenerateFlashcardsPanel({ isOpen, onClose, onBack }) {
 
           <GradientButton
             onClick={handleGenerate}
-            disabled={loading || !hasAiScope(scope)}
+            disabled={loading || (!isSubscription && !hasAiScope(scope))}
             className="w-full"
           >
             {loading ? (

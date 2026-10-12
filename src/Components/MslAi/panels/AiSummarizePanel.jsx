@@ -11,8 +11,14 @@ import {
   hasAiScope,
   summarize,
 } from "../../../Services/GeminiApi";
+import SubscriptionAiScopePicker from "../SubscriptionAiScopePicker";
+import {
+  buildSubscriptionScopePayload,
+  subscriptionSummarize,
+} from "../../../Services/SubscriptionAiApi";
 
-export default function AiSummarizePanel({ isOpen, onClose, onBack }) {
+export default function AiSummarizePanel({ isOpen, onClose, onBack, variant = "course" }) {
+  const isSubscription = variant === "subscription";
   const toast = useToast();
   const { scope } = useMslAi();
   const [loading, setLoading] = useState(false);
@@ -26,13 +32,15 @@ export default function AiSummarizePanel({ isOpen, onClose, onBack }) {
   }, [isOpen]);
 
   const handleSummarize = async () => {
-    if (!hasAiScope(scope)) {
+    if (!isSubscription && !hasAiScope(scope)) {
       toast({ title: "Select a content source first", status: "warning" });
       return;
     }
     setLoading(true);
     setSummary("");
-    const res = await summarize(buildScopePayload(scope));
+    const res = isSubscription
+      ? await subscriptionSummarize(buildSubscriptionScopePayload(scope))
+      : await summarize(buildScopePayload(scope));
     setLoading(false);
     if (res.status) {
       setSummary(res.response?.response?.summary || "");
@@ -51,16 +59,22 @@ export default function AiSummarizePanel({ isOpen, onClose, onBack }) {
           <div>
             <p className="text-sm font-semibold text-msl-text">AI summary</p>
             <p className="text-xs text-msl-muted mt-0.5">
-              Pick any course or lesson below, then generate a concise summary.
+              {isSubscription
+                ? "Pick a subscriber resource or file, then generate a concise summary."
+                : "Pick any course or lesson below, then generate a concise summary."}
             </p>
           </div>
         </div>
 
-        <AiGenerateScopePicker panelOpen={isOpen} />
+        {isSubscription ? (
+          <SubscriptionAiScopePicker panelOpen={isOpen} />
+        ) : (
+          <AiGenerateScopePicker panelOpen={isOpen} />
+        )}
 
         <GradientButton
           onClick={handleSummarize}
-          disabled={loading || !hasAiScope(scope)}
+          disabled={loading || (!isSubscription && !hasAiScope(scope))}
           className="w-full"
         >
           {loading ? (

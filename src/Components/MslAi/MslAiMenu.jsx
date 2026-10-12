@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import IconBox from "../UI/IconBox";
 
-const MENU_ITEMS = [
+const COURSE_MENU_ITEMS = [
   { id: "chat", label: "Chat with AI", desc: "Ask about your lessons", icon: MessageCircle },
   { id: "flashcards", label: "Generate flashcards", desc: "From course content", icon: Layers },
   { id: "quiz", label: "Generate quiz", desc: "Practice questions", icon: Target },
@@ -19,7 +19,17 @@ const MENU_ITEMS = [
   { id: "activity", label: "Recent activity", desc: "History & practice again", icon: History },
 ];
 
-export default function MslAiMenu({ isOpen, onClose, onSelect }) {
+const SUBSCRIPTION_MENU_ITEMS = [
+  { id: "chat", label: "Chat with AI", desc: "Ask about subscriber library", icon: MessageCircle },
+  { id: "flashcards", label: "Generate flashcards", desc: "From subscription resources", icon: Layers },
+  { id: "quiz", label: "Generate quiz", desc: "Practice from your library", icon: Target },
+  { id: "summarize", label: "Summarise", desc: "Summarise resource content", icon: Sparkles },
+  { id: "activity", label: "Recent activity", desc: "Subscriber AI history", icon: History },
+];
+
+export default function MslAiMenu({ isOpen, onClose, onSelect, variant = "course" }) {
+  const MENU_ITEMS =
+    variant === "subscription" ? SUBSCRIPTION_MENU_ITEMS : COURSE_MENU_ITEMS;
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -56,7 +66,7 @@ export default function MslAiMenu({ isOpen, onClose, onSelect }) {
                 <span className="font-bold">MSL</span> AI
               </h2>
               <p className="text-[10px] text-msl-muted mt-1 uppercase tracking-widest">
-                Learning assistant
+                {variant === "subscription" ? "Subscriber AI" : "Learning assistant"}
               </p>
             </div>
           </div>

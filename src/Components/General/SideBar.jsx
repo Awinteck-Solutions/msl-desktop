@@ -21,6 +21,8 @@ import {
   Layers,
   LogOut,
   MessageSquareText,
+  FileQuestion,
+  Sparkles,
   Trash2,
   UserCircle,
 } from "lucide-react";
@@ -29,6 +31,7 @@ import { updateAvailableCall } from "../../Services/ExtraApi";
 import { currentVersion } from "../../version";
 import { clearSession } from "../../Services/session";
 import { useSidebar } from "../../Context/SidebarContext";
+import { useExamPrepAccess } from "../../Context/ExamPrepAccessContext";
 import ThemeToggle from "../Layout/ThemeToggle";
 
 function NavLink({ to, active, icon, label, collapsed }) {
@@ -54,10 +57,14 @@ const SideBar = ({
   practiceFlashcards,
   feedback,
   profile,
+  subscription,
+  pastQuestions,
 }) => {
   const navigator = useNavigate();
   const user = localStorage.getItem("user");
   const { collapsed, toggleCollapsed, viewportNarrow } = useSidebar();
+  const { showPastQuestions, showAiSubscription } = useExamPrepAccess();
+  const showExamPrepSection = showPastQuestions || showAiSubscription;
   const [downloads, setDownloads] = useState({});
   const [clearDownloads, setClearDownloads] = useState(false);
   const [downloadCount, setDownloadCount] = useState(0);
@@ -201,6 +208,36 @@ const SideBar = ({
             />
           </div>
         </div>
+
+        {showExamPrepSection ? (
+          <div>
+            {!collapsed ? (
+              <p className="px-4 text-[10px] font-semibold uppercase tracking-widest text-msl-muted mb-2">
+                Exam prep
+              </p>
+            ) : null}
+            <div className="space-y-0.5">
+              {showPastQuestions ? (
+                <NavLink
+                  to="/past-questions"
+                  active={pastQuestions}
+                  collapsed={collapsed}
+                  label="Past questions"
+                  icon={<FileQuestion className="w-5 h-5" strokeWidth={1.75} />}
+                />
+              ) : null}
+              {showAiSubscription ? (
+                <NavLink
+                  to="/subscription"
+                  active={subscription}
+                  collapsed={collapsed}
+                  label="AI subscription"
+                  icon={<Sparkles className="w-5 h-5" strokeWidth={1.75} />}
+                />
+              ) : null}
+            </div>
+          </div>
+        ) : null}
 
         {/* <div>
           {!collapsed ? (

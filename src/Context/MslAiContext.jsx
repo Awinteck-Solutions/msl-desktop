@@ -14,6 +14,7 @@ const MslAiContext = createContext(null);
 const EMPTY_SCOPE = {
   courseId: null,
   lessonId: null,
+  resourceId: null,
   s3Keys: [],
   label: null,
   source: null,
@@ -63,6 +64,15 @@ export function MslAiProvider({ children }) {
         ...EMPTY_SCOPE,
         courseId: String(params.courseId),
         label: "Flashcard course",
+        source: "route",
+      };
+    }
+
+    if (path.startsWith("/subscription/resource/") && params.id) {
+      return {
+        ...EMPTY_SCOPE,
+        resourceId: String(params.id),
+        label: state.resourceTitle || "Subscription resource",
         source: "route",
       };
     }

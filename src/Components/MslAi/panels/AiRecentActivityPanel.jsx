@@ -14,6 +14,7 @@ import QuizPlayer from "../../Quiz/QuizPlayer";
 import StatusBadge from "../../UI/StatusBadge";
 import { ActivityListSkeleton } from "../../UI/Skeleton";
 import { getRecentActivity } from "../../../Services/GeminiApi";
+import { getSubscriptionRecentActivity } from "../../../Services/SubscriptionAiApi";
 
 const TYPE_META = {
   summarize: { label: "Summary", icon: Sparkles, status: "processing" },
@@ -188,7 +189,8 @@ function ActivityList({ items, forcedType, onPracticeFlashcards, onPracticeQuiz,
   );
 }
 
-export default function AiRecentActivityPanel({ isOpen, onClose, onBack }) {
+export default function AiRecentActivityPanel({ isOpen, onClose, onBack, variant = "course" }) {
+  const isSubscription = variant === "subscription";
   const toast = useToast();
   const [tab, setTab] = useState("all");
   const [loading, setLoading] = useState(true);
@@ -210,14 +212,15 @@ export default function AiRecentActivityPanel({ isOpen, onClose, onBack }) {
   useEffect(() => {
     if (!isOpen) return;
     setLoading(true);
-    getRecentActivity({ page: 1, limit: 50 })
+    const load = isSubscription ? getSubscriptionRecentActivity : getRecentActivity;
+    load({ page: 1, limit: 50 })
       .then((allRes) => {
         if (allRes.status) {
           setItems(allRes.response?.response || allRes.response?.items || []);
         }
       })
       .finally(() => setLoading(false));
-  }, [isOpen]);
+  }, [isOpen, isSubscription]);
 
   const filteredItems = useMemo(() => {
     if (tab === "all") return items;

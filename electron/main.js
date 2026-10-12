@@ -40,7 +40,7 @@ const creatWindow = () => {
         event.preventDefault();
     });
 
-    win.webContents.openDevTools();
+    // win.webContents.openDevTools();
 };
 
 const template = [];

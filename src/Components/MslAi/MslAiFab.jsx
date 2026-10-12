@@ -2,34 +2,32 @@ import { useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { getStoredUser } from "../../Services/session";
-import { fetchEnrolledCourseIds } from "../../Services/CourseApi";
+import { useExamPrepAccess } from "../../Context/ExamPrepAccessContext";
 import MslAiMenu from "./MslAiMenu";
-import AiChatPanel from "./panels/AiChatPanel";
+import SubscriptionAiChatPanel from "./panels/SubscriptionAiChatPanel";
 import AiGenerateFlashcardsPanel from "./panels/AiGenerateFlashcardsPanel";
 import AiGenerateQuizPanel from "./panels/AiGenerateQuizPanel";
 import AiSummarizePanel from "./panels/AiSummarizePanel";
 import AiRecentActivityPanel from "./panels/AiRecentActivityPanel";
 
+const SUBSCRIPTION_VARIANT = "subscription";
+
 export default function MslAiFab() {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [activePanel, setActivePanel] = useState(null);
-  const [enrolledIds, setEnrolledIds] = useState(null);
+  const { showAiSubscription } = useExamPrepAccess();
 
   const user = getStoredUser();
   const isLogin = location.pathname === "/login" || location.hash?.includes("/login");
 
-  useEffect(() => {
-    if (!user?.token) return;
-    fetchEnrolledCourseIds()
-      .then(setEnrolledIds)
-      .catch(() => setEnrolledIds(new Set()));
-  }, [user?.token, location.pathname]);
-
   if (!user?.token || isLogin) return null;
 
-  const previewMatch = location.pathname.match(/^\/course\/preview\/([^/]+)/);
-  if (previewMatch && enrolledIds && !enrolledIds.has(previewMatch[1])) {
+  if (location.pathname.startsWith("/past-questions")) {
+    return null;
+  }
+
+  if (!showAiSubscription) {
     return null;
   }
 
@@ -68,28 +66,33 @@ export default function MslAiFab() {
         isOpen={menuOpen && !activePanel}
         onClose={() => setMenuOpen(false)}
         onSelect={openPanel}
+        variant={SUBSCRIPTION_VARIANT}
       />
 
-      <AiChatPanel isOpen={activePanel === "chat"} onClose={closeAll} />
+      <SubscriptionAiChatPanel isOpen={activePanel === "chat"} onClose={closeAll} />
       <AiGenerateFlashcardsPanel
         isOpen={activePanel === "flashcards"}
         onClose={closeAll}
         onBack={backToMenu}
+        variant={SUBSCRIPTION_VARIANT}
       />
       <AiGenerateQuizPanel
         isOpen={activePanel === "quiz"}
         onClose={closeAll}
         onBack={backToMenu}
+        variant={SUBSCRIPTION_VARIANT}
       />
       <AiSummarizePanel
         isOpen={activePanel === "summarize"}
         onClose={closeAll}
         onBack={backToMenu}
+        variant={SUBSCRIPTION_VARIANT}
       />
       <AiRecentActivityPanel
         isOpen={activePanel === "activity"}
         onClose={closeAll}
         onBack={backToMenu}
+        variant={SUBSCRIPTION_VARIANT}
       />
     </>
   );
