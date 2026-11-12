@@ -11,6 +11,13 @@ import {
   X,
 } from "lucide-react";
 import AiHtmlContent from "../AiHtmlContent";
+import {
+  mslAiAssistantBubbleClass,
+  mslAiComposerClass,
+  mslAiComposerFieldClass,
+  mslAiSendButtonClass,
+  mslAiUserBubbleClass,
+} from "../MslAiChatUi";
 import SubscriptionAiScopePicker from "../SubscriptionAiScopePicker";
 import { ChatSkeleton } from "../../UI/Skeleton";
 import { useMslAi } from "../../../Context/MslAiContext";
@@ -33,7 +40,7 @@ const SUGGESTIONS = [
 
 function UserMessage({ msg }) {
   return (
-    <div className="max-w-[85%] rounded-2xl rounded-br-md bg-brand text-white px-4 py-2.5 text-sm">
+    <div className={mslAiUserBubbleClass}>
       {msg.imageUrl ? (
         <img
           src={msg.imageUrl}
@@ -363,7 +370,7 @@ export default function SubscriptionAiChatPanel({ isOpen, onClose }) {
                   {msg.role === "user" ? (
                     <UserMessage msg={msg} />
                   ) : (
-                    <div className="max-w-[90%] rounded-2xl rounded-bl-md border border-msl-border bg-msl-surface px-4 py-3 text-sm">
+                    <div className={mslAiAssistantBubbleClass}>
                       {msg.streaming && !msg.text ? (
                         <span className="text-msl-muted">Thinking…</span>
                       ) : (
@@ -391,7 +398,7 @@ export default function SubscriptionAiChatPanel({ isOpen, onClose }) {
               </button>
             </div>
           ) : null}
-          <div className="flex items-end gap-2">
+          <div className={mslAiComposerClass}>
             <input
               ref={imageInputRef}
               type="file"
@@ -408,7 +415,7 @@ export default function SubscriptionAiChatPanel({ isOpen, onClose }) {
             <button
               type="button"
               onClick={() => imageInputRef.current?.click()}
-              className="p-2.5 rounded-xl border border-msl-border text-msl-muted hover:text-brand"
+              className="p-2 rounded-xl text-msl-muted hover:text-msl-text hover:bg-brand/10 transition-colors shrink-0"
               aria-label="Attach image"
             >
               <ImagePlus className="w-5 h-5" />
@@ -424,7 +431,7 @@ export default function SubscriptionAiChatPanel({ isOpen, onClose }) {
               }}
               rows={1}
               placeholder="Ask about your subscription content…"
-              className="flex-1 resize-none rounded-xl border border-msl-border bg-msl-bg/50 px-4 py-2.5 text-sm max-h-32"
+              className={mslAiComposerFieldClass}
               disabled={loading}
             />
             {loading ? (
@@ -440,7 +447,7 @@ export default function SubscriptionAiChatPanel({ isOpen, onClose }) {
               <button
                 type="button"
                 onClick={stopRecording}
-                className="p-2.5 rounded-xl bg-brand text-white"
+                className="p-2.5 rounded-full text-red-500 bg-red-500/10 shrink-0"
               >
                 <MicOff className="w-5 h-5" />
               </button>
@@ -448,7 +455,7 @@ export default function SubscriptionAiChatPanel({ isOpen, onClose }) {
               <button
                 type="button"
                 onClick={startRecording}
-                className="p-2.5 rounded-xl border border-msl-border text-msl-muted hover:text-brand"
+                className="p-2 rounded-xl text-msl-muted hover:text-msl-text hover:bg-brand/10 transition-colors shrink-0"
                 aria-label="Voice input"
               >
                 <Mic className="w-5 h-5" />
@@ -458,7 +465,7 @@ export default function SubscriptionAiChatPanel({ isOpen, onClose }) {
               type="button"
               onClick={handleSubmit}
               disabled={loading || (!input.trim() && !pendingImage)}
-              className="p-2.5 rounded-xl bg-brand text-white disabled:opacity-40"
+              className={mslAiSendButtonClass}
               aria-label="Send"
             >
               <Send className="w-5 h-5" />

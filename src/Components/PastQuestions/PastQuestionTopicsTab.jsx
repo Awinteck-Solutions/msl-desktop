@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import AiHtmlContent from "../MslAi/AiHtmlContent";
+import PastQuestionExamText from "./PastQuestionExamText";
+import { LocateFixed, Sparkles } from "lucide-react";
 import PastQuestionQuestionFilters from "./PastQuestionQuestionFilters";
 import PastQuestionTopicFrequency from "./PastQuestionTopicFrequency";
 import { plainTextFromHtml } from "../../utils/aiHtmlContent";
@@ -275,22 +276,29 @@ export default function PastQuestionTopicsTab({
                 className="rounded-lg border border-msl-border bg-msl-bg/30 p-3"
               >
                 <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <span className="text-xs font-semibold text-msl-text flex-1 min-w-0">
+                    {sourceLabel(item)} · Q{item.number || ""}
+                  </span>
                   <button
                     type="button"
+                    title="Go to question"
+                    aria-label="Go to question"
                     onClick={() => onOpenSitting(item)}
-                    className="text-xs font-semibold text-brand hover:underline"
+                    className="p-1.5 rounded-lg text-msl-muted hover:text-brand hover:bg-brand/5"
                   >
-                    {sourceLabel(item)} · Q{item.number || ""}
+                    <LocateFixed className="w-4 h-4" />
                   </button>
                   <button
                     type="button"
+                    title="Ask AI"
+                    aria-label="Ask AI"
                     onClick={() => onAskAbout(item)}
-                    className="ml-auto text-xs font-semibold text-msl-muted hover:text-brand"
+                    className="p-1.5 rounded-lg text-msl-muted hover:text-brand hover:bg-brand/5"
                   >
-                    Ask AI
+                    <Sparkles className="w-4 h-4" />
                   </button>
                 </div>
-                <AiHtmlContent content={item.question} />
+                <PastQuestionExamText text={item.question} html={item.questionHtml} />
               </article>
             ))}
           </section>

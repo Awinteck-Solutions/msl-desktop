@@ -1,8 +1,5 @@
 import { Search, X } from "lucide-react";
 
-const selectClass =
-  "w-full text-xs rounded-lg border border-msl-border bg-msl-bg/50 px-2 py-2 text-msl-text focus:outline-none focus:border-brand/40";
-
 export default function PastQuestionSourceFilters({
   filters,
   onChange,
@@ -58,7 +55,7 @@ export default function PastQuestionSourceFilters({
             <select
               value={category}
               onChange={(e) => set({ category: e.target.value })}
-              className={`${selectClass} mt-0.5`}
+              className="msl-select msl-select-xs mt-0.5"
             >
               <option value="">All programmes</option>
               {options.categories.map((name) => (
@@ -77,7 +74,7 @@ export default function PastQuestionSourceFilters({
           <select
             value={year}
             onChange={(e) => set({ year: e.target.value })}
-            className={`${selectClass} mt-0.5`}
+            className="msl-select msl-select-xs mt-0.5"
           >
             <option value="">All years</option>
             {options.years.map((y) => (
@@ -95,7 +92,7 @@ export default function PastQuestionSourceFilters({
           <select
             value={level}
             onChange={(e) => set({ level: e.target.value })}
-            className={`${selectClass} mt-0.5`}
+            className="msl-select msl-select-xs mt-0.5"
           >
             <option value="">All levels</option>
             {options.levels.map((lv) => (
@@ -113,7 +110,7 @@ export default function PastQuestionSourceFilters({
           <select
             value={paperCode}
             onChange={(e) => set({ paperCode: e.target.value })}
-            className={`${selectClass} mt-0.5`}
+            className="msl-select msl-select-xs mt-0.5"
           >
             <option value="">All papers</option>
             {options.paperCodes.map((code) => (

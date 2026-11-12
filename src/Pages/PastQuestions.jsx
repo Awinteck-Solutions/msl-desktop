@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
-import { Button, Spinner, useToast } from "@chakra-ui/react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { Button, useToast } from "@chakra-ui/react";
 import {
   BarChart3,
   ChevronLeft,
@@ -12,6 +12,9 @@ import {
 } from "lucide-react";
 import AppShell from "../Components/Layout/AppShell";
 import AiHtmlContent from "../Components/MslAi/AiHtmlContent";
+import PastQuestionExamText from "../Components/PastQuestions/PastQuestionExamText";
+import PastQuestionAnswerBlock from "../Components/PastQuestions/PastQuestionAnswerBlock";
+import PastQuestionAskAiButton from "../Components/PastQuestions/PastQuestionAskAiButton";
 import PastQuestionChatFab from "../Components/PastQuestions/PastQuestionChatFab";
 import PastQuestionChatModal from "../Components/PastQuestions/PastQuestionChatModal";
 import PastQuestionPdfViewer from "../Components/PastQuestions/PastQuestionPdfViewer";
@@ -24,6 +27,8 @@ import {
 } from "../utils/pastQuestionGroups";
 import PastQuestionSourceFilters from "../Components/PastQuestions/PastQuestionSourceFilters";
 import PastQuestionQuestionFilters from "../Components/PastQuestions/PastQuestionQuestionFilters";
+import PastQuestionReaderSkeleton from "../Components/PastQuestions/PastQuestionReaderSkeleton";
+import PastQuestionBrowseSkeleton from "../Components/PastQuestions/PastQuestionBrowseSkeleton";
 import { fetchCourseQuestions, withQuestionSource } from "../utils/pastQuestionCourse";
 import { getStoredUser } from "../Services/session";
 import { mediaUrl } from "../Services/apiConfig";
@@ -42,19 +47,12 @@ import {
 } from "../utils/pastQuestionTree";
 import { plainTextFromHtml } from "../utils/aiHtmlContent";
 import { idOf } from "../utils/id";
-
-function scrollToQuestionElement(questionId) {
-  if (!questionId) return;
-  window.setTimeout(() => {
-    document
-      .getElementById(`pq-q-${questionId}`)
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, 150);
-}
+import { scrollToQuestionElement } from "../utils/pastQuestionScroll";
 
 export default function PastQuestions() {
   const { paperId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const toast = useToast();
 
   const [treeLoading, setTreeLoading] = useState(true);
@@ -80,7 +78,7 @@ export default function PastQuestions() {
   const [courseQuestions, setCourseQuestions] = useState([]);
   const [compareBusy, setCompareBusy] = useState(false);
   const pendingChatAskRef = useRef(null);
-  const pendingScrollRef = useRef(null);
+  const scrollIntentRef = useRef(null);
 
   const [scope, setScope] = useState("paper");
   const [questionId, setQuestionId] = useState("");
@@ -115,15 +113,26 @@ export default function PastQuestions() {
     [courseQuestions]
   );
 
-  const finishAskAbout = useCallback((item) => {
-    if (!item?._id) return;
-    setScope("question");
-    setQuestionId(item._id);
-    setChatOpen(true);
-    setHighlightId(item._id);
-    setReaderView("questions");
-    scrollToQuestionElement(item._id);
-  }, []);
+  const finishAskAbout = useCallback(
+    (item) => {
+      if (!item?._id) return;
+      setScope("question");
+      setQuestionId(item._id);
+      setChatOpen(true);
+      setReaderView("questions");
+      const onCurrentPaper =
+        paper?._id &&
+        String(item.paperId || paper._id) === String(paper._id) &&
+        (paper.questions || []).some((q) => String(q._id) === String(item._id));
+      if (onCurrentPaper) {
+        setHighlightId(item._id);
+        scrollToQuestionElement(item._id);
+      } else {
+        setHighlightId("");
+      }
+    },
+    [paper]
+  );
 
   const resolveChatQuestion = useCallback(
     (qid) =>
@@ -152,20 +161,37 @@ export default function PastQuestions() {
       setPaper(null);
       setInsights(null);
       setMessages([]);
-      setQuestionId("");
-      setScope("paper");
-      setReaderView("questions");
+      const pendingAsk = pendingChatAskRef.current;
+      const keepPendingAsk =
+        pendingAsk && String(pendingAsk.paperId) === String(id);
+      if (keepPendingAsk) {
+        setScope("question");
+        setQuestionId(pendingAsk.questionId);
+        setChatOpen(true);
+        setReaderView("questions");
+      } else {
+        setQuestionId("");
+        setScope("paper");
+        setReaderView("questions");
+        pendingChatAskRef.current = null;
+      }
+      const scrollIntent = scrollIntentRef.current;
+      const keepScrollIntent =
+        scrollIntent && String(scrollIntent.paperId) === String(id);
+      if (keepScrollIntent) {
+        setReaderView("questions");
+        setQuestionQuery("");
+      } else if (
+        !scrollIntent ||
+        String(scrollIntent.paperId) !== String(id)
+      ) {
+        scrollIntentRef.current = null;
+      }
       setHighlightId("");
       setFocusTopic("");
       setCourseQuestions([]);
-      setQuestionQuery("");
-      const pendingAsk = pendingChatAskRef.current;
-      if (!pendingAsk || String(pendingAsk.paperId) !== String(id)) {
-        pendingChatAskRef.current = null;
-      }
-      const pendingScroll = pendingScrollRef.current;
-      if (!pendingScroll || String(pendingScroll.paperId) !== String(id)) {
-        pendingScrollRef.current = null;
+      if (!keepScrollIntent) {
+        setQuestionQuery("");
       }
 
       if (summary) {
@@ -224,7 +250,12 @@ export default function PastQuestions() {
 
   useEffect(() => {
     if (paperId) {
-      const summary = flattenPastQuestionTree(tree).find((r) => r._id === paperId);
+      const summary =
+        tree.length > 0
+          ? flattenPastQuestionTree(tree).find(
+              (r) => String(r._id) === String(paperId)
+            )
+          : undefined;
       loadPaper(paperId, summary);
     } else {
       setPaper(null);
@@ -232,7 +263,24 @@ export default function PastQuestions() {
       setMessages([]);
       setQuestionId("");
     }
-  }, [paperId, loadPaper, tree]);
+  }, [paperId, loadPaper]);
+
+  useEffect(() => {
+    if (!paperId || !tree.length || !paper?._id) return;
+    if (String(paper._id) !== String(paperId)) return;
+    const summary = flattenPastQuestionTree(tree).find(
+      (r) => String(r._id) === String(paperId)
+    );
+    if (!summary) return;
+    setOpenGroup(
+      groupKeyForSource(
+        summary.categoryName,
+        summary.year,
+        summary.level,
+        [summary.categoryName, summary.level, summary.paperCode, summary.title].join("|")
+      )
+    );
+  }, [paperId, tree, paper?._id]);
 
   useEffect(() => {
     const pending = pendingChatAskRef.current;
@@ -251,17 +299,35 @@ export default function PastQuestions() {
     }
   }, [paper, paperLoading, courseQuestions, finishAskAbout]);
 
-  useEffect(() => {
-    const pending = pendingScrollRef.current;
-    if (!pending || !paper?._id || paperLoading) return;
-    if (String(paper._id) !== String(pending.paperId)) return;
-    const onPaper = (paper.questions || []).find((q) => q._id === pending.questionId);
+  useLayoutEffect(() => {
+    if (paperLoading || !paper?._id || readerView !== "questions") return;
+
+    const fromState = location.state?.scrollToQuestionId;
+    const intent = scrollIntentRef.current;
+    let targetId = null;
+
+    if (fromState) {
+      targetId = fromState;
+    } else if (intent && String(intent.paperId) === String(paper._id)) {
+      targetId = intent.questionId;
+    }
+
+    if (!targetId) return;
+
+    const onPaper = (paper.questions || []).find(
+      (q) => String(q._id) === String(targetId)
+    );
     if (!onPaper) return;
-    pendingScrollRef.current = null;
-    setReaderView("questions");
+
+    scrollIntentRef.current = null;
+    setQuestionQuery("");
     setHighlightId(onPaper._id);
     scrollToQuestionElement(onPaper._id);
-  }, [paper, paperLoading]);
+
+    if (fromState) {
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [paper, paperLoading, readerView, location.state, location.pathname, navigate]);
 
   useEffect(() => {
     if (!highlightId) return undefined;
@@ -269,8 +335,17 @@ export default function PastQuestions() {
     return () => window.clearTimeout(timer);
   }, [highlightId]);
 
-  const openPaper = (summary) => {
-    navigate(`/past-questions/paper/${summary._id}`);
+  const openPaper = (summary, scrollToQuestionId) => {
+    const id = summary._id;
+    if (scrollToQuestionId) {
+      scrollIntentRef.current = {
+        questionId: scrollToQuestionId,
+        paperId: id,
+      };
+    }
+    navigate(`/past-questions/paper/${id}`, {
+      state: scrollToQuestionId ? { scrollToQuestionId } : undefined,
+    });
   };
 
   const openChat = () => {
@@ -288,37 +363,84 @@ export default function PastQuestions() {
 
   const askAbout = (item) => {
     if (!item?._id) return;
-    const targetPaperId = String(item.paperId || paper?._id || "");
-    if (paper && targetPaperId && targetPaperId !== String(paper._id)) {
-      pendingChatAskRef.current = {
-        questionId: item._id,
-        paperId: targetPaperId,
-      };
-      const summary = flattenPastQuestionTree(tree).find(
-        (r) => String(r._id) === targetPaperId
-      );
-      if (summary) openPaper(summary);
+    if (!paper) {
+      toast({
+        title: "Open a sitting first",
+        description: "Select a paper from the sources list.",
+        status: "info",
+        duration: 4000,
+      });
       return;
     }
-    finishAskAbout(item);
+    if (compareBusy) {
+      toast({
+        title: "Loading questions across sittings…",
+        description: "Try Ask AI again in a moment.",
+        status: "info",
+        duration: 3500,
+      });
+      return;
+    }
+    const resolved =
+      courseQuestions.find((q) => String(q._id) === String(item._id)) ||
+      (paper?.questions || []).find((q) => String(q._id) === String(item._id)) ||
+      {
+        ...item,
+        paperId: item.paperId || paper._id,
+      };
+    finishAskAbout(resolved);
   };
 
   const openSitting = (question) => {
     if (!question?._id) return;
-    if (!question.paperId || String(question.paperId) === String(paper?._id)) {
-      setReaderView("questions");
-      setHighlightId(question._id);
-      scrollToQuestionElement(question._id);
+    const resolved =
+      courseQuestions.find((q) => String(q._id) === String(question._id)) || question;
+    const targetPaperId = String(
+      resolved.paperId || question.paperId || paper?._id || ""
+    );
+
+    if (!paper?._id) {
+      const summary = flattenPastQuestionTree(tree).find(
+        (item) => String(item._id) === targetPaperId
+      );
+      if (summary) {
+        scrollIntentRef.current = {
+          questionId: resolved._id,
+          paperId: targetPaperId,
+        };
+        setReaderView("questions");
+        openPaper(summary, resolved._id);
+      }
       return;
     }
-    pendingScrollRef.current = {
-      questionId: question._id,
-      paperId: question.paperId,
+
+    if (!targetPaperId || targetPaperId === String(paper._id)) {
+      setReaderView("questions");
+      setQuestionQuery("");
+      setHighlightId(resolved._id);
+      window.requestAnimationFrame(() =>
+        scrollToQuestionElement(resolved._id)
+      );
+      return;
+    }
+
+    scrollIntentRef.current = {
+      questionId: resolved._id,
+      paperId: targetPaperId,
     };
+    setReaderView("questions");
     const summary = flattenPastQuestionTree(tree).find(
-      (item) => item._id === question.paperId
+      (item) => String(item._id) === targetPaperId
     );
-    if (summary) openPaper(summary);
+    if (summary) openPaper(summary, resolved._id);
+    else {
+      scrollIntentRef.current = null;
+      toast({
+        title: "Could not open sitting",
+        status: "warning",
+        duration: 4000,
+      });
+    }
   };
 
   const sendChat = async (overrideText) => {
@@ -438,9 +560,7 @@ export default function PastQuestions() {
 
           <main className="flex-1 min-w-0 flex flex-col bg-msl-bg/30 overflow-hidden">
             {paperLoading ? (
-              <div className="flex justify-center py-24">
-                <Spinner size="xl" color="brand.500" />
-              </div>
+              <PastQuestionReaderSkeleton />
             ) : !paper ? (
               <p className="text-sm text-msl-muted p-8">Paper not found.</p>
             ) : (
@@ -556,9 +676,7 @@ export default function PastQuestions() {
           </div>
         </div>
       ) : treeLoading ? (
-        <div className="flex justify-center py-24">
-          <Spinner size="xl" color="brand.500" />
-        </div>
+        <PastQuestionBrowseSkeleton />
       ) : (
         <div className="max-w-3xl space-y-4">
           <PastQuestionSourceFilters
@@ -635,7 +753,7 @@ function QuestionsTab({
           <p className="text-sm text-msl-muted py-6">No questions match this filter.</p>
         ) : null}
         {filtered.map((item) => {
-        const highlighted = highlightId === item._id;
+        const highlighted = String(highlightId) === String(item._id);
         const peers = peersByQuestion?.get(item._id) || [];
         return (
           <section
@@ -652,31 +770,23 @@ function QuestionsTab({
               {item.marks != null ? (
                 <span className="text-xs text-msl-muted">{item.marks} marks</span>
               ) : null}
-              <button
-                type="button"
+              <PastQuestionAskAiButton
+                className="ml-auto"
                 onClick={() => onAskAbout(item)}
-                className="ml-auto text-xs font-semibold text-brand hover:underline"
-              >
-                Ask AI
-              </button>
+              />
             </div>
-            <AiHtmlContent content={item.question} />
-            {item.answer ? (
-              <details className="mt-3 text-sm">
-                <summary className="cursor-pointer text-brand font-medium">Suggested answer</summary>
-                <div className="mt-2 pl-3 border-l-2 border-msl-border">
-                  <AiHtmlContent content={item.answer} />
-                </div>
-              </details>
-            ) : null}
-            {item.answerNotes ? (
-              <details className="mt-2 text-sm">
-                <summary className="cursor-pointer text-msl-muted font-medium">Examiner notes</summary>
-                <div className="mt-2 pl-3 border-l-2 border-msl-border">
-                  <AiHtmlContent content={item.answerNotes} />
-                </div>
-              </details>
-            ) : null}
+            <PastQuestionExamText text={item.question} html={item.questionHtml} />
+            <PastQuestionAnswerBlock
+              label="Suggested answer"
+              text={item.answer}
+              html={item.answerHtml}
+            />
+            <PastQuestionAnswerBlock
+              label="Examiner notes"
+              text={item.answerNotes}
+              html={item.answerNotesHtml}
+              notes
+            />
             <PastQuestionSimilarPeers
               peers={peers}
               onOpenSitting={onOpenSitting}

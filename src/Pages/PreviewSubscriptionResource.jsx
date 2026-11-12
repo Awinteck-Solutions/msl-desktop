@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, FileText, Music, Video } from "lucide-react";
-import { Button, Spinner } from "@chakra-ui/react";
+import { Button } from "@chakra-ui/react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import AppShell from "../Components/Layout/AppShell";
 import SubscriptionAssetViewer from "../Components/Subscription/SubscriptionAssetViewer";
+import SubscriptionResourcePreviewSkeleton from "../Components/Subscription/SubscriptionResourcePreviewSkeleton";
 import {
   subscriptionFileKind,
   subscriptionResourceFileUrl,
@@ -27,7 +28,7 @@ export default function PreviewSubscriptionResource() {
   const { setAiScope } = useMslAi();
   const [loading, setLoading] = useState(true);
   const [denied, setDenied] = useState(false);
-  const [resource, setResource] = useState(location.state?.resource || null);
+  const [resource, setResource] = useState(null);
   const [activeFileId, setActiveFileId] = useState(null);
 
   const files = useMemo(
@@ -46,34 +47,51 @@ export default function PreviewSubscriptionResource() {
   useEffect(() => {
     if (!getStoredUser()?.token) {
       navigate("/login");
-      return;
+      return undefined;
     }
+
     let cancelled = false;
+    setLoading(true);
+    setDenied(false);
+    setActiveFileId(null);
+
+    const fromNav =
+      location.state?.resource &&
+      String(location.state.resource._id) === String(id)
+        ? location.state.resource
+        : null;
+
     (async () => {
       const status = await fetchSubscriptionStatus();
+      if (cancelled) return;
       if (!status.ok || !status.data?.hasAccess) {
-        if (!cancelled) {
-          setDenied(true);
-          setLoading(false);
-        }
+        setDenied(true);
+        setResource(null);
+        setLoading(false);
         return;
       }
-      if (resource?._id && String(resource._id) === String(id)) {
-        if (!cancelled) setLoading(false);
+
+      if (fromNav) {
+        setResource(fromNav);
+        setLoading(false);
         return;
       }
+
       const res = await fetchSubscriptionResources();
       if (cancelled) return;
       if (res.ok) {
         const found = (res.items || []).find((r) => String(r._id) === String(id));
         setResource(found || null);
+      } else {
+        setResource(null);
       }
       setLoading(false);
     })();
+
     return () => {
       cancelled = true;
     };
-  }, [id, navigate, resource?._id]);
+  }, [id, navigate, location.state?.resource]);
 
   useEffect(() => {
     if (!resource?._id || !activeFile) return;
@@ -91,10 +109,8 @@ export default function PreviewSubscriptionResource() {
 
   if (loading) {
     return (
-      <AppShell active={{ subscription: true }} title="Resource">
-        <div className="flex justify-center py-24">
-          <Spinner size="xl" color="brand.500" />
-        </div>
+      <AppShell active={{ subscription: true }} title="Resource" noPadding>
+        <SubscriptionResourcePreviewSkeleton />
       </AppShell>
     );
   }

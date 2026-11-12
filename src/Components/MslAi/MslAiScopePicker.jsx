@@ -70,8 +70,8 @@ export default function MslAiScopePicker({ onScopeChange }) {
   }
 
   return (
-    <Box className="space-y-3 p-3 bg-gray-50 rounded-lg border">
-      <Text fontSize="sm" fontWeight="medium" color="gray.700">
+    <Box className="space-y-3 p-3 rounded-lg border border-msl-border bg-msl-surface/80">
+      <Text fontSize="sm" fontWeight="medium" className="text-msl-text">
         Content scope
       </Text>
       <FormControl size="sm">
@@ -127,7 +127,7 @@ export default function MslAiScopePicker({ onScopeChange }) {
 export function MslAiScopeChip({ scope }) {
   if (!scope?.courseId && !scope?.lessonId && !scope?.s3Keys?.length) {
     return (
-      <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
+      <span className="text-xs text-amber-700 dark:text-amber-300 bg-amber-500/15 px-2 py-1 rounded-full">
         No scope — pick content below
       </span>
     );

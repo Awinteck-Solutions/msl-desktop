@@ -149,6 +149,57 @@
     @apply inline-flex items-center justify-center rounded-msl px-6 py-3 text-sm font-bold text-white bg-gradient-cta shadow-glow-indigo transition-all hover:brightness-110 active:scale-[0.98];
   }
 
+  .msl-select {
+    width: 100%;
+    appearance: none;
+    border-radius: var(--msl-radius);
+    border: 1px solid var(--msl-border);
+    background-color: var(--msl-surface);
+    color: var(--msl-text);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    background-size: 1rem;
+    padding-right: 2rem;
+    transition: border-color 150ms, box-shadow 150ms;
+    color-scheme: light;
+  }
+
+  .dark .msl-select {
+    color-scheme: dark;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23b8b4c8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  }
+
+  .msl-select:focus {
+    outline: none;
+    border-color: color-mix(in srgb, var(--brand) 55%, var(--msl-border));
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand) 18%, transparent);
+  }
+
+  .msl-select:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .msl-select option {
+    background-color: var(--msl-surface);
+    color: var(--msl-text);
+  }
+
+  .msl-select-xs {
+    font-size: 0.75rem;
+    line-height: 1rem;
+    padding: 0.5rem 2rem 0.5rem 0.5rem;
+    border-radius: 0.5rem;
+  }
+
+  .msl-select-sm {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    padding: 0.5rem 2rem 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+  }
+
   .lesson-resource-row {
     border-radius: var(--msl-radius);
     border: 1px solid var(--msl-border);
@@ -365,6 +416,128 @@
   transform: rotateY(180deg);
 }
 
+.ai-html-content {
+  color: var(--msl-text);
+  line-height: 1.55;
+}
+
+.ai-html-content :where(p, li, span, div, td, th, blockquote, h1, h2, h3, h4, h5, h6) {
+  color: inherit;
+}
+
 .ai-html-content a {
   color: var(--brand);
+}
+
+.ai-html-content pre {
+  margin: 0.5rem 0;
+  padding: 0.75rem 1rem;
+  border-radius: var(--msl-radius);
+  border: 1px solid var(--msl-border);
+  background: var(--msl-surface);
+  color: var(--msl-text);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  overflow-x: auto;
+}
+
+.ai-html-content blockquote {
+  margin: 0.5rem 0;
+  padding-left: 0.75rem;
+  border-left: 3px solid color-mix(in srgb, var(--brand) 45%, var(--msl-border));
+  color: var(--msl-muted);
+}
+
+.ai-html-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.5rem 0;
+  font-size: 0.875rem;
+}
+
+.ai-html-content th,
+.ai-html-content td {
+  border: 1px solid var(--msl-border);
+  padding: 0.4rem 0.55rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.ai-html-content th {
+  background: color-mix(in srgb, var(--msl-surface-elevated) 85%, transparent);
+  font-weight: 600;
+}
+
+.ai-html-content hr {
+  border: none;
+  border-top: 1px solid var(--msl-border);
+  margin: 0.75rem 0;
+}
+
+/* Past question exam HTML (tables, lists, typography) */
+.pq-exam-html {
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--msl-text, #0f1222);
+  overflow-wrap: anywhere;
+}
+
+.pq-exam-html p {
+  margin: 0 0 0.65em;
+}
+
+.pq-exam-html p:last-child {
+  margin-bottom: 0;
+}
+
+.pq-exam-html ul,
+.pq-exam-html ol {
+  margin: 0 0 0.65em;
+  padding-left: 1.35em;
+}
+
+.pq-exam-html ul {
+  list-style: disc;
+}
+
+.pq-exam-html ol {
+  list-style: decimal;
+}
+
+.pq-exam-html li {
+  margin: 0.15em 0;
+}
+
+.pq-exam-html table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin: 0.4em 0 0.75em;
+  font-size: 0.875rem;
+}
+
+.pq-exam-html th,
+.pq-exam-html td {
+  border: 1px solid color-mix(in srgb, var(--msl-border, #d7dae4) 90%, transparent);
+  padding: 0.4em 0.55em;
+  vertical-align: top;
+  text-align: left;
+}
+
+.pq-exam-html th {
+  background: color-mix(in srgb, var(--msl-surface, #f1f3fa) 80%, transparent);
+  font-weight: 600;
+}
+
+.pq-exam-html td.num,
+.pq-exam-html th.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.pq-exam-html blockquote {
+  margin: 0 0 0.65em;
+  padding-left: 0.75em;
+  border-left: 3px solid var(--msl-border, #d7dae4);
 }

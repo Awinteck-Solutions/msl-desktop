@@ -23,6 +23,13 @@ import {
   voiceToText,
 } from "../../../Services/GeminiApi";
 import AiHtmlContent from "../AiHtmlContent";
+import {
+  mslAiAssistantBubbleClass,
+  mslAiComposerClass,
+  mslAiComposerFieldClass,
+  mslAiSendButtonClass,
+  mslAiUserBubbleClass,
+} from "../MslAiChatUi";
 import { plainTextFromHtml } from "../../../utils/aiHtmlContent";
 import { createSequentialAudioPlayer } from "../../../utils/sequentialAudioPlayer";
 import { ChatSkeleton, Skeleton } from "../../UI/Skeleton";
@@ -66,7 +73,7 @@ function historyItemToMessages(item) {
 
 function UserMessage({ msg }) {
   return (
-    <div className="max-w-[85%] rounded-2xl rounded-br-md bg-brand text-white px-4 py-2.5 text-sm">
+    <div className={mslAiUserBubbleClass}>
       {msg.imageUrl ? (
         <img
           src={msg.imageUrl}
@@ -512,7 +519,7 @@ export default function AiChatPanel({ isOpen, onClose }) {
                 value={courseSearch}
                 onChange={(e) => setCourseSearch(e.target.value)}
                 placeholder="Search courses"
-                className="w-full rounded-xl border border-msl-border bg-msl-bg/50 pl-9 pr-3 py-2 text-sm text-msl-text placeholder:text-msl-muted focus:outline-none focus:border-brand/40 focus:ring-2 focus:ring-brand/15 dark:text-black"
+                className="w-full rounded-xl border border-msl-border bg-msl-surface pl-9 pr-3 py-2 text-sm text-msl-text placeholder:text-msl-muted focus:outline-none focus:border-brand/40 focus:ring-2 focus:ring-brand/15"
               />
             </div>
           </div>
@@ -661,7 +668,7 @@ export default function AiChatPanel({ isOpen, onClose }) {
                     {msg.role === "user" ? (
                       <UserMessage msg={msg} />
                     ) : (
-                      <div className="max-w-full w-full text-sm text-msl-text leading-relaxed">
+                      <div className={mslAiAssistantBubbleClass}>
                         <AiHtmlContent content={msg.text} />
                       </div>
                     )}
@@ -685,7 +692,7 @@ export default function AiChatPanel({ isOpen, onClose }) {
           <div className="shrink-0 px-5 pb-4 pt-2 border-t border-msl-border bg-msl-surface">
             <div className="max-w-3xl mx-auto space-y-2">
               {pendingImage ? (
-                <div className="flex items-start gap-3 rounded-xl border border-msl-border bg-msl-bg/50 p-3">
+                <div className="flex items-start gap-3 rounded-xl border border-msl-border bg-msl-surface-elevated p-3">
                   <img
                     src={pendingImage.previewUrl}
                     alt="Pending attachment"
@@ -708,7 +715,7 @@ export default function AiChatPanel({ isOpen, onClose }) {
                 </div>
               ) : null}
 
-              <div className="flex items-end gap-2 rounded-2xl border border-msl-border bg-msl-bg/40 px-2 py-2 focus-within:border-brand/40 focus-within:ring-2 focus-within:ring-brand/15">
+              <div className={mslAiComposerClass}>
                 <input
                   ref={imageInputRef}
                   type="file"
@@ -759,7 +766,7 @@ export default function AiChatPanel({ isOpen, onClose }) {
                       if (canSend) handleSubmit();
                     }
                   }}
-                  className="flex-1 resize-none bg-transparent text-sm text-msl-text placeholder:text-msl-muted focus:outline-none max-h-32 py-2 min-w-0"
+                  className={mslAiComposerFieldClass}
                 />
                 {loading ? (
                   <button
@@ -775,7 +782,7 @@ export default function AiChatPanel({ isOpen, onClose }) {
                     type="button"
                     disabled={!canSend}
                     onClick={handleSubmit}
-                    className="p-2.5 rounded-full bg-brand text-white disabled:opacity-40 hover:brightness-110 transition-all shrink-0"
+                    className={mslAiSendButtonClass}
                     aria-label="Send message"
                   >
                     <Send className="w-4 h-4" strokeWidth={2} />

@@ -1,25 +1,53 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { getStoredUser } from "../../Services/session";
 import { useExamPrepAccess } from "../../Context/ExamPrepAccessContext";
 import MslAiMenu from "./MslAiMenu";
+import AiChatPanel from "./panels/AiChatPanel";
 import SubscriptionAiChatPanel from "./panels/SubscriptionAiChatPanel";
 import AiGenerateFlashcardsPanel from "./panels/AiGenerateFlashcardsPanel";
 import AiGenerateQuizPanel from "./panels/AiGenerateQuizPanel";
 import AiSummarizePanel from "./panels/AiSummarizePanel";
 import AiRecentActivityPanel from "./panels/AiRecentActivityPanel";
 
-const SUBSCRIPTION_VARIANT = "subscription";
+function resolveFabVariant({ hasEnrollment, showAiSubscription, pathname }) {
+  const onSubscriptionRoute = pathname.startsWith("/subscription");
+
+  if (!hasEnrollment) {
+    return showAiSubscription ? "subscription" : null;
+  }
+
+  if (onSubscriptionRoute && showAiSubscription) {
+    return "subscription";
+  }
+
+  return "course";
+}
 
 export default function MslAiFab() {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [activePanel, setActivePanel] = useState(null);
-  const { showAiSubscription } = useExamPrepAccess();
+  const { hasEnrollment, showAiSubscription } = useExamPrepAccess();
 
   const user = getStoredUser();
   const isLogin = location.pathname === "/login" || location.hash?.includes("/login");
+
+  const fabVariant = useMemo(
+    () =>
+      resolveFabVariant({
+        hasEnrollment,
+        showAiSubscription,
+        pathname: location.pathname,
+      }),
+    [hasEnrollment, showAiSubscription, location.pathname]
+  );
+
+  useEffect(() => {
+    setMenuOpen(false);
+    setActivePanel(null);
+  }, [fabVariant, location.pathname]);
 
   if (!user?.token || isLogin) return null;
 
@@ -27,9 +55,11 @@ export default function MslAiFab() {
     return null;
   }
 
-  if (!showAiSubscription) {
+  if (!fabVariant) {
     return null;
   }
+
+  const isSubscription = fabVariant === "subscription";
 
   const openPanel = (id) => {
     setMenuOpen(false);
@@ -66,33 +96,38 @@ export default function MslAiFab() {
         isOpen={menuOpen && !activePanel}
         onClose={() => setMenuOpen(false)}
         onSelect={openPanel}
-        variant={SUBSCRIPTION_VARIANT}
+        variant={fabVariant}
       />
 
-      <SubscriptionAiChatPanel isOpen={activePanel === "chat"} onClose={closeAll} />
+      {isSubscription ? (
+        <SubscriptionAiChatPanel isOpen={activePanel === "chat"} onClose={closeAll} />
+      ) : (
+        <AiChatPanel isOpen={activePanel === "chat"} onClose={closeAll} />
+      )}
+
       <AiGenerateFlashcardsPanel
         isOpen={activePanel === "flashcards"}
         onClose={closeAll}
         onBack={backToMenu}
-        variant={SUBSCRIPTION_VARIANT}
+        variant={fabVariant}
       />
       <AiGenerateQuizPanel
         isOpen={activePanel === "quiz"}
         onClose={closeAll}
         onBack={backToMenu}
-        variant={SUBSCRIPTION_VARIANT}
+        variant={fabVariant}
       />
       <AiSummarizePanel
         isOpen={activePanel === "summarize"}
         onClose={closeAll}
         onBack={backToMenu}
-        variant={SUBSCRIPTION_VARIANT}
+        variant={fabVariant}
       />
       <AiRecentActivityPanel
         isOpen={activePanel === "activity"}
         onClose={closeAll}
         onBack={backToMenu}
-        variant={SUBSCRIPTION_VARIANT}
+        variant={fabVariant}
       />
     </>
   );

@@ -72,7 +72,7 @@ export default function SubscriptionAiScopePicker({ panelOpen = true }) {
   };
 
   return (
-    <div className="rounded-xl border border-msl-border bg-msl-bg/40 overflow-hidden">
+    <div className="rounded-xl border border-msl-border bg-msl-surface-elevated/60 overflow-hidden">
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
@@ -103,7 +103,7 @@ export default function SubscriptionAiScopePicker({ panelOpen = true }) {
                   if (!id) selectResource(null);
                   else selectResource(resources.find((r) => String(r._id) === id));
                 }}
-                className="w-full rounded-lg border border-msl-border bg-msl-surface px-3 py-2 text-sm text-msl-text"
+                className="msl-select msl-select-sm"
               >
                 <option value="">All subscription content</option>
                 {resources.map((r) => (
