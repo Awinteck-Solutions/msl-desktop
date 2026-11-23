@@ -15,6 +15,7 @@ import StatCard from "../Components/Dashboard/StatCard";
 import { getMyGamification, getLeaderboard } from "../Services/GamificationApi";
 import { mediaUrl } from "../Services/apiConfig";
 import { getStoredUser } from "../Services/session";
+import { onResponseCacheUpdate } from "../Services/responseCache";
 import { xpProgress } from "../utils/gamificationHelpers";
 import IndigoProgress from "../Components/UI/IndigoProgress";
 
@@ -30,11 +31,25 @@ const Gamification = () => {
       navigator("/login");
       return;
     }
-    getMyGamification()
-      .then((res) => {
-        if (res.status) setData(res.response);
-      })
-      .finally(() => setLoading(false));
+    let cancel = false;
+    const load = () => {
+      getMyGamification()
+        .then((res) => {
+          if (!cancel && res.status) setData(res.response);
+        })
+        .finally(() => {
+          if (!cancel) setLoading(false);
+        });
+    };
+    load();
+    const unsubscribe = onResponseCacheUpdate((info) => {
+      if (cancel || !String(info?.path || "").includes("/v2/gamification")) return;
+      load();
+    });
+    return () => {
+      cancel = true;
+      unsubscribe();
+    };
   }, [navigator]);
 
   const loadLeaderboard = (type) => {

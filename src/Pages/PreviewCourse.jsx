@@ -29,6 +29,8 @@ import {
     isResourceVisited,
     markResourceVisited,
 } from "../utils/courseVisitProgress";
+import VideoChapters from "../Components/Media/VideoChapters";
+import { markersForSlot, videoSlotForNumber } from "../utils/videoTimestamps";
 
 
 const PreviewCourse = () => {
@@ -58,6 +60,21 @@ const PreviewCourse = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [selected, setSelected] = useState(true)
     const [playVideo, setPlayVideo] = useState(null)
+    const [chapters, setChapters] = useState([])
+    const [activeVideoKey, setActiveVideoKey] = useState("")
+    const videoRef = useRef(null)
+    const pendingSeek = useRef(null)
+
+    const seekVideo = (seconds) => {
+        const node = videoRef.current;
+        if (node && node.readyState >= 1) {
+            node.currentTime = seconds;
+            node.play?.().catch(() => {});
+            pendingSeek.current = null;
+            return;
+        }
+        pendingSeek.current = seconds;
+    };
     const [courseTab, setCourseTab] = useState("overview")
 
     useEffect(() => {
@@ -219,7 +236,9 @@ const PreviewCourse = () => {
                     resourceType: "video",
                 });
             }
-            const videoKey = `video${number > 1 ? number - 1 : ''}`;  // video, video1, video2...
+            const videoKey = videoSlotForNumber(number);
+            setChapters(markersForSlot(lesson?.videoTimestamps, videoKey));
+            setActiveVideoKey(`${lesson?._id || ""}:${videoKey}`);
             console.log(link);
             verifyDevice()
 
@@ -399,6 +418,21 @@ const PreviewCourse = () => {
                     </div>
                 </div>
             </div>
+            {canAccess ? (
+                <VideoChapters
+                    compact
+                    markers={markersForSlot(lesson?.videoTimestamps, videoSlotForNumber(number))}
+                    onSeek={(seconds) => {
+                        const key = `${lesson?._id || ""}:${videoSlotForNumber(number)}`;
+                        if (activeVideoKey === key) {
+                            seekVideo(seconds);
+                            return;
+                        }
+                        pendingSeek.current = seconds;
+                        onTap();
+                    }}
+                />
+            ) : null}
         </>
     }
 
@@ -680,12 +714,19 @@ const PreviewCourse = () => {
                                 </div>
                             ) : (
                                 <video
+                                    ref={videoRef}
                                     className="w-full aspect-video bg-black"
                                     controls
                                     controlsList="nodownload"
                                     src={playVideo}
+                                    onLoadedMetadata={() => {
+                                        if (pendingSeek.current == null || !videoRef.current) return;
+                                        videoRef.current.currentTime = pendingSeek.current;
+                                        pendingSeek.current = null;
+                                    }}
                                 />
                             )}
+                            {playVideo ? <VideoChapters markers={chapters} onSeek={seekVideo} /> : null}
                         </div>
 
                         <div className="space-y-2">

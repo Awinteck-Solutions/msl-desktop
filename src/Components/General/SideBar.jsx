@@ -30,6 +30,7 @@ import { verify } from "../../Services/UserApi";
 import { updateAvailableCall } from "../../Services/ExtraApi";
 import { currentVersion } from "../../version";
 import { clearSession } from "../../Services/session";
+import { cachedImageSrc } from "../../Services/apiConfig";
 import { useSidebar } from "../../Context/SidebarContext";
 import { useExamPrepAccess } from "../../Context/ExamPrepAccessContext";
 import ThemeToggle from "../Layout/ThemeToggle";
@@ -122,7 +123,7 @@ const SideBar = ({
         >
           <img
             className={`object-contain ${collapsed ? "w-8 h-8" : "w-full max-h-14"}`}
-            src="https://mslelearning.com/mslogo.png"
+            src={cachedImageSrc("https://mslelearning.com/mslogo.png")}
             alt="MSL"
           />
         </div>

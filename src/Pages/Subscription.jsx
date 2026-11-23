@@ -29,13 +29,8 @@ export default function Subscription() {
       const statusRes = await fetchSubscriptionStatus();
       const access = Boolean(statusRes.ok && statusRes.data?.hasAccess);
       setHasAccess(access);
-      if (access) {
-        const res = await fetchSubscriptionResources();
-        if (res.ok) setResources(res.items || []);
-        else setResources([]);
-      } else {
-        setResources([]);
-      }
+      const res = await fetchSubscriptionResources();
+      setResources(res.ok ? res.items || [] : []);
       setLoading(false);
     })();
   }, [navigate]);
@@ -57,7 +52,7 @@ export default function Subscription() {
     <AppShell
       active={{ subscription: true }}
       title="Subscriber resources"
-      subtitle="Browse learning materials included with your AI subscription"
+      subtitle="Preview subscriber lessons. An active plan is required to play them."
       headerRight={
         <input
           type="text"
@@ -74,27 +69,26 @@ export default function Subscription() {
             <CourseCardSkeleton key={i} />
           ))}
         </div>
-      ) : !hasAccess ? (
-        <div className="max-w-xl msl-card p-8">
-          <div className="flex items-start gap-3">
-            <span className="rounded-xl bg-brand/10 p-2 text-brand">
-              <Sparkles className="h-5 w-5" />
-            </span>
-            <div>
-              <p className="font-display text-lg font-semibold text-msl-text">
-                Subscription required
-              </p>
-              <p className="text-sm text-msl-muted mt-2">
-                Subscribe on the mobile app to unlock this library. Plan
-                details and billing status are on your profile.
-              </p>
-              <Button as={Link} to="/profile" mt={4} size="sm" colorScheme="brand">
-                Go to profile
+      ) : (
+        <div className="space-y-4">
+          {!hasAccess ? (
+            <div className="w-full msl-card p-4 space-y-3">
+              <div className="flex items-start gap-3">
+              <span className="rounded-xl bg-brand/10 p-2 text-brand">
+                <Sparkles className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="font-medium text-msl-text">Preview only</p>
+                <p className="text-sm text-msl-muted mt-1">
+                  You can open each resource and read the lesson list. Playing videos and PDFs needs an active subscription. Subscribe with the mobile app.
+                </p>
+              </div>
+              </div>
+              <Button as={Link} to="/profile" size="sm" variant="outline">
+                View subscription on profile
               </Button>
             </div>
-          </div>
-        </div>
-      ) : (
+          ) : null}
         <div className="flex flex-wrap gap-4">
           {filtered.length ? (
             filtered.map((item) => (
@@ -112,6 +106,7 @@ export default function Subscription() {
               </p>
             </div>
           )}
+        </div>
         </div>
       )}
     </AppShell>

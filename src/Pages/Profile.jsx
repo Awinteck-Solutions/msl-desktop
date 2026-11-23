@@ -10,7 +10,6 @@ import {
 } from "@chakra-ui/react";
 import AppShell from "../Components/Layout/AppShell";
 import SubscriptionProfileSection from "../Components/Subscription/SubscriptionProfileSection";
-import { useExamPrepAccess } from "../Context/ExamPrepAccessContext";
 import { ProfileSkeleton } from "../Components/UI/Skeleton";
 import { mediaUrl } from "../Services/apiConfig";
 import {
@@ -34,7 +33,6 @@ const NOTIFICATION_KEYS = [
 const Profile = () => {
   const navigator = useNavigate();
   const toast = useToast();
-  const { showAiSubscription } = useExamPrepAccess();
   const fileInputRef = useRef(null);
 
   const [loading, setLoading] = useState(true);
@@ -228,7 +226,7 @@ const Profile = () => {
             )}
           </section>
 
-          {showAiSubscription ? <SubscriptionProfileSection /> : null}
+          <SubscriptionProfileSection />
 
           <section className="glass-card p-6 border border-msl-border/50">
             <h2 className="font-display text-lg font-semibold mb-4 text-msl-text">

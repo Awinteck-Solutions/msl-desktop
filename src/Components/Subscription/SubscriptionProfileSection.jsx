@@ -21,9 +21,9 @@ import {
 } from "../../Services/SubscriptionApi";
 import {
   formatSubscriptionDate,
-  formatSubscriptionMoney,
   subscriptionStatusLabel,
 } from "../../utils/subscriptionDisplay";
+import SubscriptionPlanList from "./SubscriptionPlanList";
 
 export default function SubscriptionProfileSection() {
   const toast = useToast();
@@ -51,6 +51,7 @@ export default function SubscriptionProfileSection() {
   const sub = statusData?.subscription;
   const hasAccess = Boolean(statusData?.hasAccess);
   const canSubscribe = statusData?.canSubscribe !== false;
+  const plansOpen = Boolean((plan?.plans || []).length || plan?.name);
 
   const onCancel = async () => {
     setCancelling(true);
@@ -87,34 +88,21 @@ export default function SubscriptionProfileSection() {
         </div>
       ) : (
         <div className="space-y-5">
-          <div className="rounded-lg border border-msl-border bg-msl-surface/60 p-4">
-            <p className="text-sm font-medium text-msl-text">
-              {plan?.isActive ? "MSL AI plan" : "Plan unavailable"}
-            </p>
+          <div>
+            <p className="text-sm font-medium text-msl-text mb-3">MSL AI plans</p>
             {plan?.description ? (
-              <p className="text-sm text-msl-muted mt-1">{plan.description}</p>
+              <p className="text-sm text-msl-muted mb-3">{plan.description}</p>
             ) : null}
-            {plan?.isActive ? (
-              <ul className="mt-3 text-sm text-msl-text space-y-1">
-                <li>
-                  <span className="text-msl-muted">Price: </span>
-                  {formatSubscriptionMoney(plan.amount, plan.currency)} /{" "}
-                  {plan.intervalDays ? `${plan.intervalDays} days` : "period"}
-                </li>
-                <li>
-                  <span className="text-msl-muted">Daily AI limit: </span>
-                  {plan.dailyAiLimit ?? "—"}
-                </li>
-                <li>
-                  <span className="text-msl-muted">Monthly AI limit: </span>
-                  {plan.monthlyAiLimit ?? "—"}
-                </li>
-              </ul>
+            {plansOpen ? (
+              <SubscriptionPlanList plan={plan} />
             ) : (
-              <p className="text-sm text-msl-muted mt-2">
-                The AI subscription plan is not active yet.
-              </p>
+              <p className="text-sm text-msl-muted">The AI subscription plans are not available yet.</p>
             )}
+            {plan ? (
+              <p className="mt-3 text-xs text-msl-muted">
+                Daily AI limit {plan.dailyAiLimit ?? "—"} · Monthly AI limit {plan.monthlyAiLimit ?? "—"}
+              </p>
+            ) : null}
           </div>
 
           <div>
@@ -160,25 +148,10 @@ export default function SubscriptionProfileSection() {
             ) : (
               <p className="text-sm text-msl-muted">
                 {canSubscribe
-                  ? "Subscribe on the mobile app, then return here to use subscriber AI and resources."
+                  ? "Subscribe with the mobile app, then return here to use subscriber AI and resources."
                   : "Course enrollment may already include AI features."}
               </p>
             )}
-
-            {!hasAccess && canSubscribe && plan?.isActive ? (
-              <p className="text-sm text-msl-muted mt-3">
-                Checkout is not available in the desktop app. Subscribe at{" "}
-                <a
-                  href="https://mslelearning.com"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-brand underline"
-                >
-                  mslelearning.com
-                </a>
-                .
-              </p>
-            ) : null}
 
             <div className="mt-4 flex flex-wrap gap-3">
               {hasAccess ? (
@@ -203,7 +176,7 @@ export default function SubscriptionProfileSection() {
           <ModalCloseButton />
           <ModalBody>
             Your AI access will stay active until the end of the current billing period.
-            You can subscribe again later from the website or mobile app.
+            You can subscribe again later from the mobile app.
           </ModalBody>
           <ModalFooter gap={2}>
             <Button variant="ghost" onClick={cancelModal.onClose}>

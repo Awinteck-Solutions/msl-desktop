@@ -8,6 +8,7 @@ export default function AiPanelShell({
   children,
   size = "lg",
   fullHeight = false,
+  zClass = "z-[1050]",
 }) {
   if (!isOpen) return null;
 
@@ -21,7 +22,7 @@ export default function AiPanelShell({
           : "max-w-3xl";
 
   return (
-    <div className="fixed inset-0 z-[1050] flex items-center justify-center p-4 sm:p-6">
+    <div className={`fixed inset-0 ${zClass} flex items-center justify-center p-4 sm:p-6`}>
       <button
         type="button"
         className="absolute inset-0 bg-msl-bg/85"

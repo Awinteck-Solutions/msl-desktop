@@ -2,8 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { useToast } from "@chakra-ui/react";
 import {
   ImagePlus,
-  Mic,
-  MicOff,
   Send,
   Sparkles,
   Square,
@@ -11,6 +9,7 @@ import {
   X,
 } from "lucide-react";
 import AiHtmlContent from "../AiHtmlContent";
+import StreamingAssistantText from "../StreamingAssistantText";
 import {
   mslAiAssistantBubbleClass,
   mslAiComposerClass,
@@ -28,7 +27,10 @@ import {
   streamSubscriptionContextChat,
   subscriptionQueryImage,
   subscriptionVoiceToText,
+  listSubscriptionTtsVoices,
 } from "../../../Services/SubscriptionAiApi";
+import { TtsVoiceSelect, useTtsVoices } from "../TtsVoiceSelect";
+import VoiceMicButton from "../VoiceMicButton";
 import { createSequentialAudioPlayer } from "../../../utils/sequentialAudioPlayer";
 
 const SUGGESTIONS = [
@@ -62,6 +64,7 @@ export default function SubscriptionAiChatPanel({ isOpen, onClose }) {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [recording, setRecording] = useState(false);
   const [audioMode, setAudioMode] = useState(false);
+  const { voices, voiceId, chooseVoice } = useTtsVoices(listSubscriptionTtsVoices);
   const [pendingImage, setPendingImage] = useState(null);
   const abortRef = useRef(null);
   const bottomRef = useRef(null);
@@ -141,6 +144,7 @@ export default function SubscriptionAiChatPanel({ isOpen, onClose }) {
     abortRef.current = controller;
     audioPlayerRef.current?.reset();
     const payload = { question: q, ...scopePayload };
+    if (useAudio && voiceId) payload.voiceId = voiceId;
     let assistantText = "";
 
     const appendAssistant = (chunk) => {
@@ -261,8 +265,9 @@ export default function SubscriptionAiChatPanel({ isOpen, onClose }) {
         const res = await subscriptionVoiceToText(blob);
         setLoading(false);
         if (res.status && res.transcript) {
-          if (audioMode) sendMessage(res.transcript, { useAudio: true });
-          else setInput(res.transcript);
+          const transcript = String(res.transcript).trim();
+          setInput(transcript);
+          if (audioMode) sendMessage(transcript, { useAudio: true });
         } else {
           toast({ title: res.message || "Could not transcribe", status: "warning" });
         }
@@ -326,6 +331,9 @@ export default function SubscriptionAiChatPanel({ isOpen, onClose }) {
               <Volume2 className="w-3.5 h-3.5" />
               Audio
             </button>
+            {audioMode ? (
+              <TtsVoiceSelect voices={voices} value={voiceId} onChange={chooseVoice} />
+            ) : null}
             <button
               type="button"
               onClick={handleClose}
@@ -371,11 +379,10 @@ export default function SubscriptionAiChatPanel({ isOpen, onClose }) {
                     <UserMessage msg={msg} />
                   ) : (
                     <div className={mslAiAssistantBubbleClass}>
-                      {msg.streaming && !msg.text ? (
-                        <span className="text-msl-muted">Thinking…</span>
-                      ) : (
-                        <AiHtmlContent content={msg.text} />
-                      )}
+                      <StreamingAssistantText
+                        content={msg.text}
+                        streaming={Boolean(msg.streaming)}
+                      />
                     </div>
                   )}
                 </div>
@@ -443,23 +450,13 @@ export default function SubscriptionAiChatPanel({ isOpen, onClose }) {
               >
                 <Square className="w-5 h-5" />
               </button>
-            ) : recording ? (
-              <button
-                type="button"
-                onClick={stopRecording}
-                className="p-2.5 rounded-full text-red-500 bg-red-500/10 shrink-0"
-              >
-                <MicOff className="w-5 h-5" />
-              </button>
             ) : (
-              <button
-                type="button"
-                onClick={startRecording}
-                className="p-2 rounded-xl text-msl-muted hover:text-msl-text hover:bg-brand/10 transition-colors shrink-0"
-                aria-label="Voice input"
-              >
-                <Mic className="w-5 h-5" />
-              </button>
+              <VoiceMicButton
+                recording={recording}
+                audioMode={audioMode}
+                disabled={loading}
+                onClick={recording ? stopRecording : startRecording}
+              />
             )}
             <button
               type="button"

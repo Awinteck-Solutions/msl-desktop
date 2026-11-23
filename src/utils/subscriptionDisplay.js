@@ -1,4 +1,4 @@
-import { mediaUrl } from "../Services/apiConfig";
+import { mediaUrl, cachedImageSrc } from "../Services/apiConfig";
 
 /** Default card art when a resource has no uploaded thumbnail. */
 export const MSL_SUBSCRIPTION_THUMBNAIL =
@@ -33,11 +33,11 @@ export function subscriptionStatusLabel(status) {
 export function subscriptionResourceThumbnail(resource) {
   const key = resource?.thumbnail;
   if (key) return mediaUrl(key);
-  return MSL_SUBSCRIPTION_THUMBNAIL;
+  return cachedImageSrc(MSL_SUBSCRIPTION_THUMBNAIL);
 }
 
 export function subscriptionResourceFileUrl(file) {
-  if (file?.url) return file.url;
+  if (file?.url) return cachedImageSrc(file.url);
   if (file?.fileKey) return mediaUrl(file.fileKey);
   return "";
 }

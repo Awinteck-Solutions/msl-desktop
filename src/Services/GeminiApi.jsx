@@ -1,5 +1,6 @@
 import { apiClient, getAuthHeaders } from "./apiClient";
 import apiEndpoints from "./apiConfig";
+import { invalidateResponseCache } from "./responseCache";
 import { normalizeS3Key } from "../utils/s3Key";
 import { consumeSseStream } from "../utils/sseParser";
 
@@ -84,28 +85,77 @@ export const getQuizHistory = async (params = {}) => {
   return { status: false, response: response.data };
 };
 
-export const summarize = async (payload) => {
-  const response = await apiClient.post(apiEndpoints.geminiSummarize, payload);
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function pollGeneration(jobId) {
+  const deadline = Date.now() + 3 * 60 * 1000;
+  while (Date.now() < deadline) {
+    await sleep(2000);
+    const response = await apiClient.get(apiEndpoints.geminiGenerationStatus, {
+      params: { jobId },
+    });
+    const job = response.data?.response;
+    if (job?.status === "ready") {
+      return {
+        status: true,
+        response: { success: true, message: job.message, response: job.result },
+      };
+    }
+    if (job?.status === "failed") {
+      return { status: false, message: job.error || job.message, response: response.data };
+    }
+  }
+  return {
+    status: false,
+    message: "Still generating. Open recent activity to check again.",
+  };
+}
+
+async function beginJob(url, payload) {
+  const response = await apiClient.post(url, payload);
+  if (response.data?.jobId && response.data?.status === "processing") {
+    return { status: true, jobId: response.data.jobId };
+  }
+  if (response.status === 200 && response.data?.success !== false) {
+    return { status: true, immediate: response.data };
+  }
+  return { status: false, message: response.data?.message || "Could not start generation" };
+}
+
+async function startGeneration(url, payload) {
+  const started = await beginJob(url, payload);
+  if (started.jobId) return pollGeneration(started.jobId);
+  if (started.immediate) return { status: true, response: started.immediate };
+  return { status: false, message: started.message };
+}
+
+export const beginSummarize = (payload) => beginJob(apiEndpoints.geminiSummarize, payload);
+export const beginFlashcards = (payload) => beginJob(apiEndpoints.geminiGenerateFlashcards, payload);
+export const beginQuiz = (payload) => beginJob(apiEndpoints.geminiGenerateQuiz, payload);
+
+export const getGenerationStatus = async (params = {}) => {
+  const response = await apiClient.get(apiEndpoints.geminiGenerationStatus, { params });
   if (response.status === 200 && response.data?.success !== false) {
     return { status: true, response: response.data };
   }
   return { status: false, response: response.data, message: response.data?.message };
 };
 
+export const summarize = async (payload) => startGeneration(apiEndpoints.geminiSummarize, payload);
+
 export const generateFlashcards = async (payload) => {
-  const response = await apiClient.post(apiEndpoints.geminiGenerateFlashcards, payload);
-  if (response.status === 200 && response.data?.success !== false) {
-    return { status: true, response: response.data };
-  }
-  return { status: false, response: response.data, message: response.data?.message };
+  const result = await startGeneration(apiEndpoints.geminiGenerateFlashcards, payload);
+  if (result.status) invalidateResponseCache("/v2/flashcard");
+  return result;
 };
 
 export const generateQuiz = async (payload) => {
-  const response = await apiClient.post(apiEndpoints.geminiGenerateQuiz, payload);
-  if (response.status === 200 && response.data?.success !== false) {
-    return { status: true, response: response.data };
+  const result = await startGeneration(apiEndpoints.geminiGenerateQuiz, payload);
+  if (result.status) {
+    invalidateResponseCache("/v2/quiz");
+    invalidateResponseCache("/v2/course/user-with-quizzes");
   }
-  return { status: false, response: response.data, message: response.data?.message };
+  return result;
 };
 
 /** Raw text stream (not SSE) from query-general-context-stream */
@@ -221,3 +271,8 @@ export const voiceToText = async (audioBlob, languageCode = "en-US") => {
   }
   return { status: false, message: data?.message || "Transcription failed" };
 };
+
+export async function listTtsVoices() {
+  const response = await apiClient.get(apiEndpoints.geminiVoices);
+  return response.data?.response ?? [];
+}

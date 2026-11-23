@@ -35,22 +35,33 @@ const PreviewPdf = () => {
         }
         if (state?.data) {
             const pdfKey = normalizeS3Key(state.data);
-            setAiScope({
-                courseId: String(id),
-                s3Keys: pdfKey ? [pdfKey] : [],
-                label: "Current PDF",
-                source: "page",
-                resourceType: "pdf",
-            });
+            setAiScope(
+                state.allowWithoutEnrollment
+                    ? {
+                        courseId: null,
+                        resourceId: String(id),
+                        s3Keys: pdfKey ? [pdfKey] : [],
+                        label: "Current PDF",
+                        source: "page",
+                        resourceType: "pdf",
+                    }
+                    : {
+                        courseId: String(id),
+                        s3Keys: pdfKey ? [pdfKey] : [],
+                        label: "Current PDF",
+                        source: "page",
+                        resourceType: "pdf",
+                    }
+            );
         }
-        if (!state?.online) return;
+        if (!state?.online || state?.allowWithoutEnrollment) return;
         fetchEnrolledCourseIds().then((ids) => {
             if (!ids.has(String(id))) {
                 setBlocked(true);
                 navigator(`/course/preview/${id}`);
             }
         });
-    }, [id, navigator, state?.online, state?.data, setAiScope]);
+    }, [id, navigator, state?.online, state?.data, state?.allowWithoutEnrollment, setAiScope]);
 
     const defaultLayout = defaultLayoutPlugin({
         toolbarPlugin: {
@@ -113,14 +124,14 @@ const PreviewPdf = () => {
 
         <div className="flex gap-1 ">
             <div className="min-w-[300px]">
-                <SideBar mycourse={true} />
+                <SideBar mycourse={!state?.allowWithoutEnrollment} subscription={Boolean(state?.allowWithoutEnrollment)} />
             </div>
 
             <div className="w-full bg-gray-50 overflow-scroll h-screen">
 
                 <div className="flex justify-around ">
 
-                    <button className="px-2 py-1 bg-blue-700 hover:bg-blue-600 rounded m-2 text-white" onClick={() => navigator(`/course/preview/${id}`)}>
+                    <button className="px-2 py-1 bg-blue-700 hover:bg-blue-600 rounded m-2 text-white" onClick={() => navigator(state?.returnTo || `/course/preview/${id}`)}>
                         Go Back
                     </button>
                     <div className='flex flex-wrap justify-between space-x-2 items-center w-fit hidden lg:inline-flex'>

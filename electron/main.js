@@ -6,6 +6,9 @@ const axios = require('axios');
 const fs = require('fs');
 const log = require('electron-log');
 const os = require('os');
+const { registerImageCacheScheme, startImageCache } = require('./imageCache');
+
+registerImageCacheScheme();
 
 let win;
 
@@ -24,7 +27,7 @@ const creatWindow = () => {
         },
     });
     // Enable screen capture protection
-    win.setContentProtection(true);
+    // win.setContentProtection(true);
 
     const urlPath = url.format({
         pathname: path.join(__dirname, '../dist/index.html'),
@@ -220,6 +223,7 @@ app.on('render-process-gone', (event, webContents, details) => {
 });
 
 app.whenReady().then(() => {
+    startImageCache(app);
     creatWindow();
     log.info('App started...');
     createFolderIfNotExists(downloadFolderPath);
@@ -237,6 +241,18 @@ app.whenReady().then(() => {
 
     ipcMain.on('dashboard', (event, data) => {
         console.log('Received data in main process:', data);
+    });
+
+    ipcMain.on('notify', (_event, data) => {
+        const title = String(data?.title || 'MSL').slice(0, 80);
+        const body = String(data?.body || '').slice(0, 240);
+        if (!body) return;
+        const notification = new Notification({
+            title,
+            body,
+            icon: path.join(__dirname, '../assets/mslogo.ico'),
+        });
+        notification.show();
     });
 
     ipcMain.on('update-available', (event, data) => {

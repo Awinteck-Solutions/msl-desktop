@@ -1,78 +1,47 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useToast } from "@chakra-ui/react";
 import { Layers, Loader2, Sparkles } from "lucide-react";
 import AiPanelShell from "../AiPanelShell";
 import AiGenerateScopePicker from "../AiGenerateScopePicker";
-import FlashcardPlayer from "../../Flashcard/FlashcardPlayer";
-import StudyModal from "../../UI/StudyModal";
 import GradientButton from "../../UI/GradientButton";
 import { useMslAi } from "../../../Context/MslAiContext";
-import {
-  buildScopePayload,
-  generateFlashcards,
-  hasAiScope,
-} from "../../../Services/GeminiApi";
+import { buildScopePayload, hasAiScope } from "../../../Services/GeminiApi";
 import SubscriptionAiScopePicker from "../SubscriptionAiScopePicker";
-import {
-  buildSubscriptionScopePayload,
-  subscriptionGenerateFlashcards,
-} from "../../../Services/SubscriptionAiApi";
+import { buildSubscriptionScopePayload } from "../../../Services/SubscriptionAiApi";
+import { useGenerationActivity } from "../GenerationActivity";
 
 export default function AiGenerateFlashcardsPanel({ isOpen, onClose, onBack, variant = "course" }) {
   const isSubscription = variant === "subscription";
   const toast = useToast();
   const { scope } = useMslAi();
+  const { begin } = useGenerationActivity();
   const [count, setCount] = useState(10);
-  const [loading, setLoading] = useState(false);
-  const [deck, setDeck] = useState(null);
-  const [practicing, setPracticing] = useState(false);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setPracticing(false);
-      setDeck(null);
-      setLoading(false);
-    }
-  }, [isOpen]);
+  const [starting, setStarting] = useState(false);
 
   const handleGenerate = async () => {
     if (!isSubscription && !hasAiScope(scope)) {
       toast({ title: "Select a content source first", status: "warning" });
       return;
     }
-    setLoading(true);
-    const res = isSubscription
-      ? await subscriptionGenerateFlashcards({
-          ...buildSubscriptionScopePayload(scope),
-          count,
-        })
-      : await generateFlashcards({
-          ...buildScopePayload(scope),
-          count,
-          courseIdForLink: scope.courseId,
-        });
-    setLoading(false);
-    if (res.status) {
-      const cards = res.response?.response?.flashcards || [];
-      setDeck({
-        title: scope.label ? `AI — ${scope.label}` : "AI Flashcards",
-        flashcardItems: cards,
-      });
-      setPracticing(true);
-    } else {
-      toast({ title: res.message || "Generation failed", status: "error" });
-    }
-  };
-
-  const exitPractice = () => {
-    setPracticing(false);
-    setDeck(null);
+    setStarting(true);
+    const payload = isSubscription
+      ? { ...buildSubscriptionScopePayload(scope), count }
+      : { ...buildScopePayload(scope), count, courseIdForLink: scope.courseId };
+    const res = await begin({
+      kind: "generate-flashcards",
+      label: scope.label ? `Flashcards — ${scope.label}` : "Flashcards",
+      variant: isSubscription ? "subscription" : "course",
+      payload,
+    });
+    setStarting(false);
+    if (res.status) onClose();
+    else toast({ title: res.message || "Generation failed", status: "error" });
   };
 
   return (
     <>
       <AiPanelShell
-        isOpen={isOpen && !practicing}
+        isOpen={isOpen}
         onClose={onClose}
         onBack={onBack}
         title="Generate flashcards"
@@ -121,13 +90,13 @@ export default function AiGenerateFlashcardsPanel({ isOpen, onClose, onBack, var
 
           <GradientButton
             onClick={handleGenerate}
-            disabled={loading || (!isSubscription && !hasAiScope(scope))}
+            disabled={starting || (!isSubscription && !hasAiScope(scope))}
             className="w-full"
           >
-            {loading ? (
+            {starting ? (
               <span className="inline-flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Generating…
+                Starting…
               </span>
             ) : (
               <span className="inline-flex items-center gap-2">
@@ -138,17 +107,6 @@ export default function AiGenerateFlashcardsPanel({ isOpen, onClose, onBack, var
           </GradientButton>
         </div>
       </AiPanelShell>
-
-      <StudyModal
-        isOpen={isOpen && practicing && !!deck}
-        onClose={exitPractice}
-        title={deck?.title || "Flashcard review"}
-        subtitle="AI-generated deck"
-        size="xl"
-        closeOnClickOutside={false}
-      >
-        <FlashcardPlayer deck={deck} ephemeral embedded onBack={exitPractice} />
-      </StudyModal>
     </>
   );
 }

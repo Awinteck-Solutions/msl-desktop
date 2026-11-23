@@ -19,6 +19,7 @@ import { getMyGamification } from "../Services/GamificationApi";
 import { mediaUrl } from "../Services/apiConfig";
 import { getProfile } from "../Services/UserApi";
 import { getStoredUser } from "../Services/session";
+import { onResponseCacheUpdate } from "../Services/responseCache";
 import { xpProgress } from "../utils/gamificationHelpers";
 import { matchesSearch } from "../utils/practiceSearch";
 import {
@@ -61,29 +62,51 @@ const Dashboard = () => {
       return;
     }
 
-    userCourseList()
-      .then((res) => setMyCourses(res.response || []))
-      .catch(() => {})
-      .finally(() => setLoadingCourses(false));
+    let cancel = false;
+    const load = () => {
+      userCourseList()
+        .then((res) => {
+          if (!cancel) setMyCourses(res.response || []);
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (!cancel) setLoadingCourses(false);
+        });
 
-    courseList()
-      .then((res) => setExploreCourses(res.response || []))
-      .catch(() => {})
-      .finally(() => setLoadingExplore(false));
+      courseList()
+        .then((res) => {
+          if (!cancel) setExploreCourses(res.response || []);
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (!cancel) setLoadingExplore(false);
+        });
 
-    getMyGamification()
-      .then((res) => {
-        if (res.status) setGamification(res.response);
-      })
-      .finally(() => setLoadingGamification(false));
+      getMyGamification()
+        .then((res) => {
+          if (!cancel && res.status) setGamification(res.response);
+        })
+        .finally(() => {
+          if (!cancel) setLoadingGamification(false);
+        });
 
-    getProfile()
-      .then((res) => {
-        if (res.status && res.response?.image) {
-          setProfileImage(res.response.image);
-        }
-      })
-      .catch(() => {});
+      getProfile()
+        .then((res) => {
+          if (!cancel && res.status && res.response?.image) {
+            setProfileImage(res.response.image);
+          }
+        })
+        .catch(() => {});
+    };
+
+    load();
+    const unsubscribe = onResponseCacheUpdate(() => {
+      if (!cancel) load();
+    });
+    return () => {
+      cancel = true;
+      unsubscribe();
+    };
   }, [navigator, user?.token]);
 
   const { remaining, pct } = xpProgress(

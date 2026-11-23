@@ -1,98 +1,42 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useToast } from "@chakra-ui/react";
 import { ClipboardList, Loader2, Sparkles } from "lucide-react";
 import AiPanelShell from "../AiPanelShell";
 import AiGenerateScopePicker from "../AiGenerateScopePicker";
-import QuizPlayer from "../../Quiz/QuizPlayer";
 import GradientButton from "../../UI/GradientButton";
 import { useMslAi } from "../../../Context/MslAiContext";
-import {
-  buildScopePayload,
-  generateQuiz,
-  hasAiScope,
-} from "../../../Services/GeminiApi";
+import { buildScopePayload, hasAiScope } from "../../../Services/GeminiApi";
 import SubscriptionAiScopePicker from "../SubscriptionAiScopePicker";
-import {
-  buildSubscriptionScopePayload,
-  subscriptionGenerateQuiz,
-} from "../../../Services/SubscriptionAiApi";
+import { buildSubscriptionScopePayload } from "../../../Services/SubscriptionAiApi";
+import { useGenerationActivity } from "../GenerationActivity";
 
 export default function AiGenerateQuizPanel({ isOpen, onClose, onBack, variant = "course" }) {
   const isSubscription = variant === "subscription";
   const toast = useToast();
   const { scope } = useMslAi();
+  const { begin } = useGenerationActivity();
   const [numQuestions, setNumQuestions] = useState(5);
-  const [loading, setLoading] = useState(false);
-  const [quiz, setQuiz] = useState(null);
-  const [practicing, setPracticing] = useState(false);
-
-  useEffect(() => {
-    if (!isOpen) {
-      setPracticing(false);
-      setQuiz(null);
-      setLoading(false);
-    }
-  }, [isOpen]);
+  const [starting, setStarting] = useState(false);
 
   const handleGenerate = async () => {
     if (!isSubscription && !hasAiScope(scope)) {
       toast({ title: "Select a content source first", status: "warning" });
       return;
     }
-    setLoading(true);
-    const res = isSubscription
-      ? await subscriptionGenerateQuiz({
-          ...buildSubscriptionScopePayload(scope),
-          numQuestions,
-        })
-      : await generateQuiz({
-          ...buildScopePayload(scope),
-          numQuestions,
-          courseIdForLink: scope.courseId,
-        });
-    setLoading(false);
-    if (res.status) {
-      const questions = (res.response?.response?.questions || []).map((q, i) => ({
-        ...q,
-        _id: `ai-q-${i}`,
-      }));
-      setQuiz({
-        title: scope.label ? `AI — ${scope.label}` : "AI Quiz",
-        quiz: questions,
-      });
-      setPracticing(true);
-    } else {
-      toast({ title: res.message || "Generation failed", status: "error" });
-    }
+    setStarting(true);
+    const payload = isSubscription
+      ? { ...buildSubscriptionScopePayload(scope), numQuestions }
+      : { ...buildScopePayload(scope), numQuestions, courseIdForLink: scope.courseId };
+    const res = await begin({
+      kind: "generate-quiz",
+      label: scope.label ? `Quiz — ${scope.label}` : "Quiz",
+      variant: isSubscription ? "subscription" : "course",
+      payload,
+    });
+    setStarting(false);
+    if (res.status) onClose();
+    else toast({ title: res.message || "Generation failed", status: "error" });
   };
-
-  if (practicing && quiz) {
-    return (
-      <AiPanelShell
-        isOpen={isOpen}
-        onClose={onClose}
-        onBack={() => {
-          setPracticing(false);
-          setQuiz(null);
-        }}
-        title={quiz.title || "Practice quiz"}
-        size="xl"
-        fullHeight
-      >
-        <div className="flex flex-col h-full min-h-0 p-4 sm:p-6">
-          <QuizPlayer
-            quiz={quiz}
-            ephemeral
-            embedded
-            onBack={() => {
-              setPracticing(false);
-              setQuiz(null);
-            }}
-          />
-        </div>
-      </AiPanelShell>
-    );
-  }
 
   return (
     <AiPanelShell
@@ -145,15 +89,15 @@ export default function AiGenerateQuizPanel({ isOpen, onClose, onBack, variant =
 
         <GradientButton
           onClick={handleGenerate}
-          disabled={loading || (!isSubscription && !hasAiScope(scope))}
-          className="w-full"
-        >
-          {loading ? (
-            <span className="inline-flex items-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Generating…
-            </span>
-          ) : (
+            disabled={starting || (!isSubscription && !hasAiScope(scope))}
+            className="w-full"
+          >
+            {starting ? (
+              <span className="inline-flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Starting…
+              </span>
+            ) : (
             <span className="inline-flex items-center gap-2">
               <Sparkles className="w-4 h-4" />
               Generate &amp; practice

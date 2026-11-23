@@ -2,8 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@chakra-ui/react";
 import {
   MessageSquare,
-  Mic,
-  MicOff,
   Send,
   Sparkles,
   Square,
@@ -11,6 +9,7 @@ import {
   X,
 } from "lucide-react";
 import AiHtmlContent from "../MslAi/AiHtmlContent";
+import StreamingAssistantText from "../MslAi/StreamingAssistantText";
 import {
   mslAiAssistantBubbleClass,
   mslAiComposerClass,
@@ -18,9 +17,12 @@ import {
   mslAiSendButtonClass,
   mslAiUserBubbleClass,
 } from "../MslAi/MslAiChatUi";
+import { TtsVoiceSelect, useTtsVoices } from "../MslAi/TtsVoiceSelect";
+import VoiceMicButton from "../MslAi/VoiceMicButton";
+import CornerNotices from "../UI/BackgroundLoadNotice";
 import { Skeleton } from "../UI/Skeleton";
-import { voiceToText } from "../../Services/GeminiApi";
-import { plainTextFromHtml } from "../../utils/aiHtmlContent";
+import { listTtsVoices, voiceToText } from "../../Services/GeminiApi";
+import { createSequentialAudioPlayer } from "../../utils/sequentialAudioPlayer";
 import { sourceLabel } from "../../utils/pastQuestionGroups";
 
 const SUGGESTIONS_PAPER = [
@@ -43,15 +45,6 @@ function UserBubble({ text }) {
   );
 }
 
-function speakPlainText(text) {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.rate = 1;
-  utterance.pitch = 1;
-  window.speechSynthesis.speak(utterance);
-}
-
 export default function PastQuestionChatModal({
   isOpen,
   onClose,
@@ -65,15 +58,32 @@ export default function PastQuestionChatModal({
   onInputChange,
   onSend,
   busy,
+  historyLoading = false,
   onClearQuestionContext,
   contextQuestions = [],
+  quota = null,
+  loadingLabel = "",
+  quotaNote = null,
 }) {
   const toast = useToast();
   const bottomRef = useRef(null);
   const recorderRef = useRef(null);
   const chunksRef = useRef([]);
+  const abortRef = useRef(null);
+  const audioPlayerRef = useRef(null);
   const [audioMode, setAudioMode] = useState(false);
   const [recording, setRecording] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+  const { voices, voiceId, chooseVoice } = useTtsVoices(listTtsVoices);
+
+  if (!audioPlayerRef.current) {
+    audioPlayerRef.current = createSequentialAudioPlayer({
+      minBufferChunks: 1,
+      minBufferMs: 80,
+      maxInitialWaitMs: 400,
+      onIdle: () => setSpeaking(false),
+    });
+  }
 
   const questionCatalog = useMemo(() => {
     const map = new Map();
@@ -101,7 +111,9 @@ export default function PastQuestionChatModal({
 
   useEffect(() => {
     if (!isOpen) {
-      window.speechSynthesis?.cancel();
+      abortRef.current?.abort();
+      audioPlayerRef.current?.stop();
+      setSpeaking(false);
       setRecording(false);
       recorderRef.current?.stop();
     }
@@ -113,11 +125,24 @@ export default function PastQuestionChatModal({
     }
   }, [isOpen, questionId, scope, onScopeChange]);
 
+  useEffect(() => () => {
+    abortRef.current?.abort();
+    audioPlayerRef.current?.stop();
+  }, []);
+
   const handleClose = () => {
-    window.speechSynthesis?.cancel();
+    abortRef.current?.abort();
+    audioPlayerRef.current?.stop();
+    setSpeaking(false);
     recorderRef.current?.stop();
     setRecording(false);
     onClose();
+  };
+
+  const stopSpeaking = () => {
+    abortRef.current?.abort();
+    audioPlayerRef.current?.stop();
+    setSpeaking(false);
   };
 
   const submitQuestion = async (questionText) => {
@@ -131,10 +156,31 @@ export default function PastQuestionChatModal({
       });
       return;
     }
-    const answer = await onSend(q, { useAudio: audioMode });
-    if (audioMode && answer) {
-      const plain = plainTextFromHtml(answer).replace(/\s+/g, " ").trim();
-      if (plain) speakPlainText(plain.slice(0, 8000));
+
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    audioPlayerRef.current?.reset();
+    setSpeaking(Boolean(audioMode));
+
+    await onSend(q, {
+      useAudio: audioMode,
+      voiceId: audioMode ? voiceId : undefined,
+      signal: controller.signal,
+      onAudio: (data) => {
+        if (!data?.audio) return;
+        audioPlayerRef.current?.enqueue({
+          chunkIndex: data.chunkIndex ?? 0,
+          audio: data.audio,
+          mimeType: data.mimeType || "audio/wav",
+          isFinal: data.isFinal !== false,
+        });
+      },
+    });
+
+    if (controller.signal.aborted) {
+      audioPlayerRef.current?.stop();
+      setSpeaking(false);
     }
   };
 
@@ -156,11 +202,9 @@ export default function PastQuestionChatModal({
         const blob = new Blob(chunksRef.current, { type: "audio/webm" });
         const res = await voiceToText(blob);
         if (res.status && res.transcript) {
-          if (audioMode) {
-            await submitQuestion(res.transcript);
-          } else {
-            onInputChange(res.transcript);
-          }
+          const transcript = String(res.transcript).trim();
+          onInputChange(transcript);
+          if (audioMode) await submitQuestion(transcript);
         } else {
           toast({ title: res.message || "Could not transcribe", status: "warning" });
         }
@@ -176,10 +220,6 @@ export default function PastQuestionChatModal({
   const stopRecording = () => {
     recorderRef.current?.stop();
     setRecording(false);
-  };
-
-  const stopSpeaking = () => {
-    window.speechSynthesis?.cancel();
   };
 
   if (!isOpen) return null;
@@ -204,6 +244,11 @@ export default function PastQuestionChatModal({
               <Sparkles className="w-4 h-4 text-brand shrink-0" strokeWidth={1.75} />
               <h2 className="font-display text-sm font-semibold text-msl-text">Context</h2>
             </div>
+            {quota && !quota.unlimited ? (
+              <p className="mt-2 text-xs text-msl-muted">
+                Past question AI: {quota.remaining ?? 0} of {quota.limit ?? 0} lifetime questions left
+              </p>
+            ) : null}
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-3 text-sm">
             {paper ? (
@@ -212,7 +257,12 @@ export default function PastQuestionChatModal({
                   <p className="text-xs font-semibold uppercase tracking-wide text-msl-muted">
                     Paper
                   </p>
-                  <p className="font-medium text-msl-text mt-1 line-clamp-3">{paper.title}</p>
+                  <p className="font-medium text-msl-text mt-1 line-clamp-3">
+                    {String(paper.title || "")
+                      .replace(/\s+Solutions?\s*$/i, "")
+                      .replace(/\s+Paper\s*$/i, "")
+                      .trim()}
+                  </p>
                   <p className="text-xs text-msl-muted mt-1">
                     {[paper.sitting, paper.year, paper.level, paper.paperCode]
                       .filter(Boolean)
@@ -293,6 +343,11 @@ export default function PastQuestionChatModal({
               <p className="text-sm text-msl-muted mt-0.5 hidden sm:block">
                 MSL AI · {scopeLabel}
               </p>
+              <CornerNotices
+                className="mt-2"
+                loadingLabel={loadingLabel}
+                quotaNote={quotaNote}
+              />
               <div className="flex flex-wrap gap-2 mt-2 sm:hidden">
                 <select
                   value={scope}
@@ -319,7 +374,7 @@ export default function PastQuestionChatModal({
                 ) : null}
               </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex flex-wrap items-center justify-end gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => setAudioMode((v) => !v)}
@@ -332,6 +387,9 @@ export default function PastQuestionChatModal({
                 <Volume2 className="w-3.5 h-3.5" strokeWidth={1.75} />
                 Audio replies
               </button>
+              {audioMode ? (
+                <TtsVoiceSelect voices={voices} value={voiceId} onChange={chooseVoice} />
+              ) : null}
               <button
                 type="button"
                 onClick={handleClose}
@@ -346,6 +404,13 @@ export default function PastQuestionChatModal({
           <div className="flex-1 overflow-y-auto px-5 py-5 min-h-0">
             {!paper ? (
               <p className="text-sm text-msl-muted text-center py-12">Open a sitting to chat.</p>
+            ) : historyLoading && !messages.length ? (
+              <div className="space-y-3 max-w-md mx-auto pt-8">
+                <Skeleton className="h-10 w-2/3 ml-auto" />
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-10 w-1/2 ml-auto" />
+                <Skeleton className="h-16 w-full" />
+              </div>
             ) : !messages.length ? (
               <div className="flex flex-col items-center justify-center text-center h-full min-h-[240px] px-4">
                 <div className="w-14 h-14 rounded-2xl bg-brand/10 flex items-center justify-center text-brand mb-5">
@@ -356,7 +421,7 @@ export default function PastQuestionChatModal({
                 </h3>
                 <p className="text-sm text-msl-muted mt-2 max-w-md">
                   {audioMode
-                    ? "Speak or type — answers can be read aloud when audio replies are on."
+                    ? "Speak or type — replies play with the voice you pick above."
                     : "Pick a prompt or type your question. Use scope on the left for paper, course, or one question."}
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-8 w-full max-w-lg">
@@ -384,7 +449,10 @@ export default function PastQuestionChatModal({
                       <UserBubble text={msg.text} />
                     ) : (
                       <div className={mslAiAssistantBubbleClass}>
-                        <AiHtmlContent content={msg.html || msg.text} />
+                        <StreamingAssistantText
+                          content={msg.html || msg.text}
+                          streaming={Boolean(msg.streaming)}
+                        />
                       </div>
                     )}
                   </div>
@@ -403,23 +471,12 @@ export default function PastQuestionChatModal({
           <div className="shrink-0 px-5 pb-4 pt-2 border-t border-msl-border bg-msl-surface">
             <div className="max-w-3xl mx-auto">
               <div className={mslAiComposerClass}>
-                <button
-                  type="button"
-                  onClick={recording ? stopRecording : startRecording}
+                <VoiceMicButton
+                  recording={recording}
+                  audioMode={audioMode}
                   disabled={busy || !paper}
-                  className={`p-2 rounded-xl transition-colors shrink-0 disabled:opacity-40 ${
-                    recording
-                      ? "text-red-500 bg-red-500/10"
-                      : "text-msl-muted hover:text-msl-text hover:bg-brand/10"
-                  }`}
-                  aria-label={audioMode ? "Speak to send" : "Voice input"}
-                >
-                  {recording ? (
-                    <MicOff className="w-4 h-4" strokeWidth={1.75} />
-                  ) : (
-                    <Mic className="w-4 h-4" strokeWidth={1.75} />
-                  )}
-                </button>
+                  onClick={recording ? stopRecording : startRecording}
+                />
                 <textarea
                   rows={1}
                   placeholder={
@@ -440,7 +497,7 @@ export default function PastQuestionChatModal({
                   }}
                   className={`${mslAiComposerFieldClass} disabled:opacity-50`}
                 />
-                {busy ? (
+                {busy || speaking ? (
                   <button
                     type="button"
                     onClick={stopSpeaking}

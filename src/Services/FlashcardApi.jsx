@@ -1,6 +1,7 @@
 import { apiClient } from "./apiClient";
 import apiEndpoints from "./apiConfig";
 import { getStoredUser } from "./session";
+import { invalidateResponseCache } from "./responseCache";
 
 export const coursesWithFlashcards = async (page = 1, limit = 10000) => {
   const response = await apiClient.get(apiEndpoints.flashcardUserCourses, {
@@ -49,6 +50,10 @@ export const flashcardComplete = async (flashcardId) => {
     `${apiEndpoints.flashcardSingle}/${flashcardId}/complete`,
     { studentId }
   );
+  if (response.status === 200) {
+    invalidateResponseCache("/v2/flashcard");
+    invalidateResponseCache("/v2/gamification");
+  }
   return { status: response.status === 200, response: response.data };
 };
 
@@ -58,5 +63,9 @@ export const flashcardProgress = async (flashcardId, progress) => {
     `${apiEndpoints.flashcardSingle}/${flashcardId}/progress`,
     { studentId, progress }
   );
+  if (response.status === 200) {
+    invalidateResponseCache("/v2/flashcard");
+    invalidateResponseCache("/v2/gamification");
+  }
   return { status: response.status === 200, response: response.data };
 };

@@ -6,7 +6,9 @@ export default function SubscriptionResourceCard({ resource }) {
   const description = resource?.description || "";
   const image = subscriptionResourceThumbnail(resource);
   const category = resource?.categoryId?.name;
-  const fileCount = (resource?.files || []).length;
+  const lessonCount = resource?.lessons?.length || 0;
+  const legacyFiles = (resource?.files || []).length;
+  const fileCount = lessonCount > 0 ? lessonCount : legacyFiles;
 
   return (
     <div className="w-[280px] glass-card overflow-hidden hover:shadow-glow-indigo-soft transition group">
@@ -36,7 +38,14 @@ export default function SubscriptionResourceCard({ resource }) {
         </p>
         {fileCount > 0 ? (
           <p className="text-xs text-msl-muted">
-            {fileCount} {fileCount === 1 ? "asset" : "assets"}
+            {fileCount}{" "}
+            {lessonCount > 0
+              ? fileCount === 1
+                ? "lesson"
+                : "lessons"
+              : fileCount === 1
+                ? "asset"
+                : "assets"}
           </p>
         ) : null}
         <Link
@@ -44,7 +53,7 @@ export default function SubscriptionResourceCard({ resource }) {
           to={`/subscription/resource/${resource._id}`}
           state={{ resource, resourceTitle: title }}
         >
-          Open resource →
+          Preview resource →
         </Link>
       </div>
     </div>

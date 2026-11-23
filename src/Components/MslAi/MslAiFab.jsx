@@ -11,14 +11,14 @@ import AiGenerateQuizPanel from "./panels/AiGenerateQuizPanel";
 import AiSummarizePanel from "./panels/AiSummarizePanel";
 import AiRecentActivityPanel from "./panels/AiRecentActivityPanel";
 
-function resolveFabVariant({ hasEnrollment, showAiSubscription, pathname }) {
+function resolveFabVariant({ hasEnrollment, hasSubscription, pathname }) {
   const onSubscriptionRoute = pathname.startsWith("/subscription");
 
   if (!hasEnrollment) {
-    return showAiSubscription ? "subscription" : null;
+    return hasSubscription ? "subscription" : null;
   }
 
-  if (onSubscriptionRoute && showAiSubscription) {
+  if (onSubscriptionRoute && hasSubscription) {
     return "subscription";
   }
 
@@ -29,7 +29,7 @@ export default function MslAiFab() {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [activePanel, setActivePanel] = useState(null);
-  const { hasEnrollment, showAiSubscription } = useExamPrepAccess();
+  const { hasEnrollment, hasSubscription } = useExamPrepAccess();
 
   const user = getStoredUser();
   const isLogin = location.pathname === "/login" || location.hash?.includes("/login");
@@ -38,10 +38,10 @@ export default function MslAiFab() {
     () =>
       resolveFabVariant({
         hasEnrollment,
-        showAiSubscription,
+        hasSubscription,
         pathname: location.pathname,
       }),
-    [hasEnrollment, showAiSubscription, location.pathname]
+    [hasEnrollment, hasSubscription, location.pathname]
   );
 
   useEffect(() => {

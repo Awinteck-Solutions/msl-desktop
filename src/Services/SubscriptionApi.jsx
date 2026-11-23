@@ -1,5 +1,6 @@
 import { apiClient, publicClient, unwrapData } from "./apiClient";
 import apiEndpoints from "./apiConfig";
+import { invalidateResponseCache } from "./responseCache";
 
 function failMessage(error) {
   const status = error?.response?.status;
@@ -33,7 +34,20 @@ export async function fetchSubscriptionStatus() {
   }
 }
 
-export async function fetchSubscriptionResources(page = 1, limit = 50) {
+export async function fetchSubscriptionResource(id) {
+  try {
+    const response = await apiClient.get(`${apiEndpoints.subscriptionResources}/${id}`);
+    const body = unwrapData(response);
+    if (response.status === 200 && body?.response) {
+      return { ok: true, resource: body.response };
+    }
+    return { ok: false, message: body?.message || "Could not load resource" };
+  } catch (error) {
+    return { ok: false, message: failMessage(error) };
+  }
+}
+
+export async function fetchSubscriptionResources(page = 1, limit = 100) {
   try {
     const response = await apiClient.get(apiEndpoints.subscriptionResources, {
       params: { page, limit },
@@ -57,6 +71,7 @@ export async function cancelSubscription() {
     const response = await apiClient.post(apiEndpoints.subscriptionCancel, {});
     const body = unwrapData(response);
     if (response.status === 200) {
+      invalidateResponseCache("/v2/subscription/status");
       return {
         ok: true,
         message: body?.message || "Subscription updated",

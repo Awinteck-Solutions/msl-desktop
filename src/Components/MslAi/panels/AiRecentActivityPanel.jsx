@@ -12,9 +12,13 @@ import AiHtmlContent from "../AiHtmlContent";
 import FlashcardPlayer from "../../Flashcard/FlashcardPlayer";
 import QuizPlayer from "../../Quiz/QuizPlayer";
 import StatusBadge from "../../UI/StatusBadge";
+import { LivePhrase } from "../GenerationActivity";
 import { ActivityListSkeleton } from "../../UI/Skeleton";
-import { getRecentActivity } from "../../../Services/GeminiApi";
-import { getSubscriptionRecentActivity } from "../../../Services/SubscriptionAiApi";
+import { getGenerationStatus, getRecentActivity } from "../../../Services/GeminiApi";
+import {
+  getSubscriptionGenerationStatus,
+  getSubscriptionRecentActivity,
+} from "../../../Services/SubscriptionAiApi";
 
 const TYPE_META = {
   summarize: { label: "Summary", icon: Sparkles, status: "processing" },
@@ -53,7 +57,16 @@ function resolveActivityTitle(item) {
 
 function normalizeActivityItem(item, forcedType) {
   const type = forcedType || item.queryType || item.type || "unknown";
-  const meta = TYPE_META[type] || { label: type, status: "neutral" };
+  const meta = { ...(TYPE_META[type] || { label: type, status: "neutral" }) };
+  if (item.status === "processing") {
+    meta.status = "processing";
+    meta.label = "Generating";
+  } else if (item.status === "failed") {
+    meta.status = "error";
+    meta.label = "Failed";
+  } else {
+    meta.status = "completed";
+  }
 
   let title = resolveActivityTitle(item);
   let subtitle = "";
@@ -65,7 +78,9 @@ function normalizeActivityItem(item, forcedType) {
   if (type === "summarize") {
     summary = summary || answer;
     answer = summary;
-    if (!title) title = "Lesson summary";
+    if (!title) title = item.status === "failed" ? "Summary failed" : "Lesson summary";
+    if (item.status === "processing") subtitle = "Generating summary";
+    if (item.status === "failed" && item.message) subtitle = item.message;
     const preview = String(summary || "")
       .replace(/<[^>]+>/g, "")
       .trim();
@@ -80,7 +95,9 @@ function normalizeActivityItem(item, forcedType) {
       : flashcards || parseJsonAnswer(answer) || [];
     flashcards = cards;
     answer = cards;
-    if (!title) title = "Flashcard deck";
+    if (!title) title = item.status === "failed" ? "Flashcards failed" : "Flashcard deck";
+    if (item.status === "processing") subtitle = "Generating flashcards";
+    if (item.status === "failed" && item.message) subtitle = item.message;
     subtitle = `${cards.length} card${cards.length === 1 ? "" : "s"}`;
   }
 
@@ -90,7 +107,9 @@ function normalizeActivityItem(item, forcedType) {
       : questions || parseJsonAnswer(answer) || [];
     questions = qs;
     answer = qs;
-    if (!title) title = "Generated quiz";
+    if (!title) title = item.status === "failed" ? "Quiz failed" : "Generated quiz";
+    if (item.status === "processing") subtitle = "Generating quiz";
+    if (item.status === "failed" && item.message) subtitle = item.message;
     subtitle = `${qs.length} question${qs.length === 1 ? "" : "s"}`;
   }
 
@@ -145,7 +164,7 @@ function ActivityList({ items, forcedType, onPracticeFlashcards, onPracticeQuiz,
                     {item.title}
                   </p>
                   <StatusBadge status={item.meta?.status || "neutral"}>
-                    {item.meta?.label || type}
+                    {item.status === "processing" ? <LivePhrase kind={type} /> : item.meta?.label || type}
                   </StatusBadge>
                 </div>
                 {item.subtitle ? (
@@ -153,7 +172,7 @@ function ActivityList({ items, forcedType, onPracticeFlashcards, onPracticeQuiz,
                 ) : null}
                 <p className="text-xs text-msl-muted font-mono tabular-nums mb-3">{item.date}</p>
 
-                {type === "summarize" ? (
+                {item.status === "processing" || item.status === "failed" ? null : type === "summarize" ? (
                   <button
                     type="button"
                     onClick={() => onViewSummary(item)}
@@ -162,7 +181,7 @@ function ActivityList({ items, forcedType, onPracticeFlashcards, onPracticeQuiz,
                     View summary
                   </button>
                 ) : null}
-                {type === "generate-flashcards" ? (
+                {item.status === "processing" || item.status === "failed" ? null : type === "generate-flashcards" ? (
                   <button
                     type="button"
                     onClick={() => onPracticeFlashcards(item)}
@@ -171,7 +190,7 @@ function ActivityList({ items, forcedType, onPracticeFlashcards, onPracticeQuiz,
                     Practice again
                   </button>
                 ) : null}
-                {type === "generate-quiz" ? (
+                {item.status === "processing" || item.status === "failed" ? null : type === "generate-quiz" ? (
                   <button
                     type="button"
                     onClick={() => onPracticeQuiz(item)}
@@ -210,16 +229,47 @@ export default function AiRecentActivityPanel({ isOpen, onClose, onBack, variant
   }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen) return;
-    setLoading(true);
-    const load = isSubscription ? getSubscriptionRecentActivity : getRecentActivity;
-    load({ page: 1, limit: 50 })
-      .then((allRes) => {
-        if (allRes.status) {
-          setItems(allRes.response?.response || allRes.response?.items || []);
-        }
-      })
-      .finally(() => setLoading(false));
+    if (!isOpen) return undefined;
+    let cancelled = false;
+    const loadHistory = isSubscription ? getSubscriptionRecentActivity : getRecentActivity;
+    const loadStatus = isSubscription ? getSubscriptionGenerationStatus : getGenerationStatus;
+
+    const refresh = async (first) => {
+      if (first) setLoading(true);
+      const [history, jobs] = await Promise.all([
+        loadHistory({ page: 1, limit: 50 }),
+        loadStatus({ limit: 20 }),
+      ]);
+      if (cancelled) return false;
+      const live = (Array.isArray(jobs.response?.response) ? jobs.response.response : [])
+        .filter((job) => job.status === "processing" || job.status === "failed")
+        .map((job) => ({
+          _id: job.jobId,
+          queryType: job.queryType,
+          status: job.status,
+          answer: job.result?.summary || job.result?.flashcards || job.result?.questions || job.message,
+          createdAt: job.createdAt,
+          message: job.error || job.message,
+        }));
+      const done = history.status ? history.response?.response || history.response?.items || [] : [];
+      setItems([...live, ...done]);
+      if (first) setLoading(false);
+      return live.some((job) => job.status === "processing");
+    };
+
+    let timer;
+    refresh(true).then((pending) => {
+      if (!pending || cancelled) return;
+      timer = setInterval(async () => {
+        const stillPending = await refresh(false);
+        if (!stillPending && timer) clearInterval(timer);
+      }, 3000);
+    });
+
+    return () => {
+      cancelled = true;
+      if (timer) clearInterval(timer);
+    };
   }, [isOpen, isSubscription]);
 
   const filteredItems = useMemo(() => {

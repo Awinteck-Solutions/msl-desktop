@@ -477,13 +477,16 @@
 /* Past question exam HTML (tables, lists, typography) */
 .pq-exam-html {
   font-size: 0.9375rem;
-  line-height: 1.55;
+  line-height: 1.6;
   color: var(--msl-text, #0f1222);
   overflow-wrap: anywhere;
+  text-align: justify;
+  hyphens: auto;
 }
 
 .pq-exam-html p {
   margin: 0 0 0.65em;
+  text-align: justify;
 }
 
 .pq-exam-html p:last-child {
@@ -494,6 +497,7 @@
 .pq-exam-html ol {
   margin: 0 0 0.65em;
   padding-left: 1.35em;
+  text-align: left;
 }
 
 .pq-exam-html ul {
@@ -504,17 +508,33 @@
   list-style: decimal;
 }
 
+.pq-exam-html ol[type="a"] {
+  list-style: lower-alpha;
+}
+
+.pq-exam-html ol[type="i"] {
+  list-style: lower-roman;
+}
+
 .pq-exam-html li {
   margin: 0.15em 0;
 }
 
 .pq-exam-html table {
-  display: block;
+  display: table;
+  width: 100%;
   max-width: 100%;
-  overflow-x: auto;
   border-collapse: collapse;
   margin: 0.4em 0 0.75em;
   font-size: 0.875rem;
+  table-layout: auto;
+  text-align: left;
+}
+
+.pq-exam-html .pq-table-scroll {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .pq-exam-html th,
@@ -522,7 +542,6 @@
   border: 1px solid color-mix(in srgb, var(--msl-border, #d7dae4) 90%, transparent);
   padding: 0.4em 0.55em;
   vertical-align: top;
-  text-align: left;
 }
 
 .pq-exam-html th {
@@ -531,13 +550,132 @@
 }
 
 .pq-exam-html td.num,
-.pq-exam-html th.num {
+.pq-exam-html th.num,
+.pq-exam-html [align="right"],
+.pq-exam-html [style*="text-align:right"],
+.pq-exam-html [style*="text-align: right"] {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+.pq-exam-html [align="center"],
+.pq-exam-html [style*="text-align:center"],
+.pq-exam-html [style*="text-align: center"] {
+  text-align: center;
+}
+
+.pq-exam-html img {
+  max-width: 100%;
+  height: auto;
+  margin: 0.5em 0;
+}
+
+.pq-exam-html figure {
+  margin: 0.75em 0;
+}
+
+.pq-exam-html figcaption {
+  font-size: 0.8em;
+  color: var(--msl-muted, #5b6178);
+  margin-top: 0.35em;
 }
 
 .pq-exam-html blockquote {
   margin: 0 0 0.65em;
   padding-left: 0.75em;
   border-left: 3px solid var(--msl-border, #d7dae4);
+}
+
+/* Chat voice mic — live recording treatment */
+.msl-voice-mic {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  border-radius: 0.75rem;
+  color: var(--msl-muted);
+  transition: color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.msl-voice-mic:hover:not(:disabled) {
+  color: var(--msl-text);
+  background: color-mix(in srgb, var(--brand) 10%, transparent);
+}
+
+.msl-voice-mic:disabled {
+  opacity: 0.4;
+}
+
+.msl-voice-mic.is-recording {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.25);
+}
+
+.msl-voice-mic__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  border: 2px solid rgba(239, 68, 68, 0.45);
+  pointer-events: none;
+  animation: msl-voice-pulse 1.4s ease-out infinite;
+}
+
+.msl-voice-mic__ring--b {
+  animation-delay: 0.45s;
+}
+
+.msl-voice-mic__icon {
+  animation: none;
+}
+
+.msl-voice-mic.is-recording .msl-voice-mic__icon {
+  animation: msl-voice-icon 1s ease-in-out infinite;
+}
+
+@keyframes msl-voice-pulse {
+  0% {
+    transform: scale(0.72);
+    opacity: 0.85;
+  }
+  100% {
+    transform: scale(1.55);
+    opacity: 0;
+  }
+}
+
+@keyframes msl-voice-icon {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+}
+
+/* Streaming assistant text caret */
+.msl-stream-caret {
+  display: inline-block;
+  width: 0.45em;
+  height: 1.05em;
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  border-radius: 1px;
+  background: color-mix(in srgb, var(--brand) 75%, transparent);
+  animation: msl-stream-blink 0.9s steps(1, end) infinite;
+}
+
+@keyframes msl-stream-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
 }

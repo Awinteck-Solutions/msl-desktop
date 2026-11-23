@@ -1,6 +1,7 @@
 import { apiClient, publicClient, getAuthHeaders } from "./apiClient";
 import apiEndpoints from "./apiConfig";
 import { getStoredUser, setStoredUser } from "./session";
+import { invalidateResponseCache } from "./responseCache";
 
 export const generateQRCode = async (data) => {
   const response = await publicClient.post(apiEndpoints.generateQRCode, data);
@@ -55,6 +56,7 @@ export const updateProfile = async ({ firstname, lastname }) => {
     if (user) {
       setStoredUser({ ...user, firstname, lastname });
     }
+    invalidateResponseCache("/v2/user/profile");
     return { status: true, response: response.data };
   }
   return { status: false, response: response.data };
@@ -86,6 +88,7 @@ export const uploadProfileImage = async (file) => {
     if (user && imageKey) {
       setStoredUser({ ...user, image: imageKey });
     }
+    invalidateResponseCache("/v2/user/profile");
     return { status: true, response: imageKey };
   }
   return { status: false, response: response.data };

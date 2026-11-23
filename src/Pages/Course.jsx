@@ -5,6 +5,7 @@ import { courseList, fetchEnrolledCourseIds } from "../Services/CourseApi";
 import { useEffect, useState } from "react";
 import { mediaUrl } from "../Services/apiConfig";
 import { getStoredUser } from "../Services/session";
+import { onResponseCacheUpdate } from "../Services/responseCache";
 import { useNavigate } from "react-router-dom";
 import { matchesSearch } from "../utils/practiceSearch";
 
@@ -24,13 +25,32 @@ const Course = () => {
       navigator("/login");
       return;
     }
-    courseList()
-      .then((response) => {
-        setCourses(response.response);
-        setLoadingCourse(false);
-      })
-      .catch(() => setLoadingCourse(false));
-    fetchEnrolledCourseIds().then(setEnrolledIds).catch(() => {});
+    let cancel = false;
+    const load = () => {
+      courseList()
+        .then((response) => {
+          if (cancel) return;
+          setCourses(response.response);
+          setLoadingCourse(false);
+        })
+        .catch(() => {
+          if (!cancel) setLoadingCourse(false);
+        });
+      fetchEnrolledCourseIds()
+        .then((ids) => {
+          if (!cancel) setEnrolledIds(ids);
+        })
+        .catch(() => {});
+    };
+    load();
+    const unsubscribe = onResponseCacheUpdate((info) => {
+      if (cancel || !String(info?.path || "").includes("/v2/course")) return;
+      load();
+    });
+    return () => {
+      cancel = true;
+      unsubscribe();
+    };
   }, [navigator]);
 
   return (

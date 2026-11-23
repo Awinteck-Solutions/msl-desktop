@@ -3,8 +3,6 @@ import { useToast } from "@chakra-ui/react";
 import {
   ImagePlus,
   MessageSquare,
-  Mic,
-  MicOff,
   Search,
   Send,
   Sparkles,
@@ -21,8 +19,12 @@ import {
   streamContextAudioChat,
   streamContextChat,
   voiceToText,
+  listTtsVoices,
 } from "../../../Services/GeminiApi";
+import { TtsVoiceSelect, useTtsVoices } from "../TtsVoiceSelect";
+import VoiceMicButton from "../VoiceMicButton";
 import AiHtmlContent from "../AiHtmlContent";
+import StreamingAssistantText from "../StreamingAssistantText";
 import {
   mslAiAssistantBubbleClass,
   mslAiComposerClass,
@@ -101,6 +103,7 @@ export default function AiChatPanel({ isOpen, onClose }) {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [recording, setRecording] = useState(false);
   const [audioMode, setAudioMode] = useState(false);
+  const { voices, voiceId, chooseVoice } = useTtsVoices(listTtsVoices);
   const [pendingImage, setPendingImage] = useState(null);
   const abortRef = useRef(null);
   const bottomRef = useRef(null);
@@ -311,6 +314,7 @@ export default function AiChatPanel({ isOpen, onClose }) {
     abortRef.current = controller;
     audioPlayerRef.current?.reset();
     const payload = { question: q, ...scopePayload };
+    if (useAudio && voiceId) payload.voiceId = voiceId;
     let assistantText = "";
 
     const setAssistantText = (text, streaming = true) => {
@@ -449,11 +453,9 @@ export default function AiChatPanel({ isOpen, onClose }) {
         const res = await voiceToText(blob);
         setLoading(false);
         if (res.status && res.transcript) {
-          if (audioMode) {
-            sendMessage(res.transcript, { useAudio: true });
-          } else {
-            setInput(res.transcript);
-          }
+          const transcript = String(res.transcript).trim();
+          setInput(transcript);
+          if (audioMode) sendMessage(transcript, { useAudio: true });
         } else {
           toast({ title: res.message || "Could not transcribe", status: "warning" });
         }
@@ -613,6 +615,7 @@ export default function AiChatPanel({ isOpen, onClose }) {
                     : "Ask about this course and its study materials"}
                 </p>
               </div>
+              <div className="flex shrink-0 flex-col items-end gap-2">
               <button
                 type="button"
                 onClick={() => setAudioMode((v) => !v)}
@@ -625,6 +628,10 @@ export default function AiChatPanel({ isOpen, onClose }) {
                 <Volume2 className="w-3.5 h-3.5" strokeWidth={1.75} />
                 Audio replies
               </button>
+              {audioMode ? (
+                <TtsVoiceSelect voices={voices} value={voiceId} onChange={chooseVoice} />
+              ) : null}
+              </div>
             </div>
           </header>
 
@@ -669,7 +676,10 @@ export default function AiChatPanel({ isOpen, onClose }) {
                       <UserMessage msg={msg} />
                     ) : (
                       <div className={mslAiAssistantBubbleClass}>
-                        <AiHtmlContent content={msg.text} />
+                        <StreamingAssistantText
+                          content={msg.text}
+                          streaming={Boolean(msg.streaming)}
+                        />
                       </div>
                     )}
                   </div>
@@ -732,23 +742,12 @@ export default function AiChatPanel({ isOpen, onClose }) {
                 >
                   <ImagePlus className="w-4 h-4" strokeWidth={1.75} />
                 </button>
-                <button
-                  type="button"
-                  onClick={recording ? stopRecording : startRecording}
+                <VoiceMicButton
+                  recording={recording}
+                  audioMode={audioMode}
                   disabled={loading}
-                  className={`p-2 rounded-xl transition-colors shrink-0 disabled:opacity-40 ${
-                    recording
-                      ? "text-red-500 bg-red-500/10"
-                      : "text-msl-muted hover:text-msl-text hover:bg-brand/10"
-                  }`}
-                  aria-label={audioMode ? "Speak to send" : "Voice input"}
-                >
-                  {recording ? (
-                    <MicOff className="w-4 h-4" strokeWidth={1.75} />
-                  ) : (
-                    <Mic className="w-4 h-4" strokeWidth={1.75} />
-                  )}
-                </button>
+                  onClick={recording ? stopRecording : startRecording}
+                />
                 <textarea
                   rows={1}
                   placeholder={

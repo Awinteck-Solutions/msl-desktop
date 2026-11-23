@@ -8,6 +8,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ping: ()=> ipcRenderer.invoke('ping'),
     sendData: (channel, data) => ipcRenderer.send(channel, data),
     receiveData: (channel, callback) => ipcRenderer.on(channel, (event, ...args) => callback(...args)),
+    cachedImageUrl: (remoteUrl) => {
+      if (typeof remoteUrl !== 'string' || !/^https:\/\//i.test(remoteUrl)) return remoteUrl;
+      return `msl-img://cache/?src=${encodeURIComponent(remoteUrl)}`;
+    },
+    allowImageOrigin: (origin) => ipcRenderer.invoke('image-cache-allow-origin', origin),
   });
 
 

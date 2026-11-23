@@ -8,12 +8,37 @@ const cdnUrl = import.meta.env.VITE_CDN_URL || bucketUrl;
 
 const v2 = `${baseUrl}/v2`;
 
+const CACHEABLE_IMAGE = /\.(avif|gif|jpe?g|png|svg|webp)$/i;
+
+/** Local disk cache for raster images. PDFs, video, and audio stay on the network. */
+export function cachedImageSrc(remoteUrl) {
+  if (!remoteUrl) return "";
+  const remote = String(remoteUrl);
+  let pathname = remote.split("?")[0].split("#")[0];
+  try {
+    pathname = new URL(remote).pathname;
+  } catch {
+    // Relative keys are resolved by mediaUrl before this runs.
+  }
+  const cacheable = CACHEABLE_IMAGE.test(pathname);
+  if (
+    cacheable &&
+    typeof window !== "undefined" &&
+    window.electronAPI?.cachedImageUrl
+  ) {
+    return window.electronAPI.cachedImageUrl(remote);
+  }
+  return remote;
+}
+
 /** Strip legacy public/res prefix and build a media URL. */
 export function mediaUrl(path) {
   if (!path) return "";
-  const key = String(path).replace(/^\/?public\/res\//, "");
+  const raw = String(path);
+  if (/^https?:\/\//i.test(raw)) return cachedImageSrc(raw);
+  const key = raw.replace(/^\/?public\/res\//, "").replace(/^\/+/, "");
   const base = cdnUrl.endsWith("/") ? cdnUrl.slice(0, -1) : cdnUrl;
-  return `${base}/${key}`;
+  return cachedImageSrc(`${base}/${key}`);
 }
 
 const apiEndpoints = {
@@ -75,6 +100,8 @@ const apiEndpoints = {
   geminiContextAudioStream: `${v2}/gemini-ai/query-general-context-audio-text-stream`,
   geminiQueryImage: `${v2}/gemini-ai/query-image`,
   geminiVoiceToText: `${v2}/gemini-ai/voice-to-text`,
+  geminiVoices: `${v2}/gemini-ai/voices`,
+  geminiGenerationStatus: `${v2}/gemini-ai/generation-status`,
   geminiSummarize: `${v2}/gemini-ai/summarize`,
   geminiGenerateFlashcards: `${v2}/gemini-ai/generate-flashcards`,
   geminiGenerateQuiz: `${v2}/gemini-ai/generate-quiz`,
@@ -91,6 +118,8 @@ const apiEndpoints = {
   subscriptionAiContextAudioStream: `${v2}/subscription-ai/query-general-context-audio-text-stream`,
   subscriptionAiQueryImage: `${v2}/subscription-ai/query-image`,
   subscriptionAiVoiceToText: `${v2}/subscription-ai/voice-to-text`,
+  subscriptionAiVoices: `${v2}/subscription-ai/voices`,
+  subscriptionAiGenerationStatus: `${v2}/subscription-ai/generation-status`,
   subscriptionAiSummarize: `${v2}/subscription-ai/summarize`,
   subscriptionAiGenerateFlashcards: `${v2}/subscription-ai/generate-flashcards`,
   subscriptionAiGenerateQuiz: `${v2}/subscription-ai/generate-quiz`,
@@ -99,6 +128,9 @@ const apiEndpoints = {
   pastQuestionsTree: `${v2}/past-questions`,
   pastQuestionPaper: `${v2}/past-questions`,
   pastQuestionChat: `${v2}/past-questions/chat`,
+  pastQuestionChatAudioStream: `${v2}/past-questions/chat-audio-stream`,
+  pastQuestionAiQuota: `${v2}/past-questions/ai-quota`,
+  pastQuestionHistory: `${v2}/past-questions/history`,
 };
 
 export default apiEndpoints;

@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { userCourseList } from "../Services/CourseApi";
 import { mediaUrl } from "../Services/apiConfig";
 import { getStoredUser } from "../Services/session";
+import { onResponseCacheUpdate } from "../Services/responseCache";
 import { matchesSearch } from "../utils/practiceSearch";
 import {
   countCoursesByGroup,
@@ -40,12 +41,27 @@ const MyCourses = () => {
       navigator("/login");
       return;
     }
-    userCourseList()
-      .then((response) => {
-        setMycourses(response.response);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    let cancel = false;
+    const load = () => {
+      userCourseList()
+        .then((response) => {
+          if (cancel) return;
+          setMycourses(response.response);
+          setLoading(false);
+        })
+        .catch(() => {
+          if (!cancel) setLoading(false);
+        });
+    };
+    load();
+    const unsubscribe = onResponseCacheUpdate((info) => {
+      if (cancel || !String(info?.path || "").includes("/v2/course/user-courses")) return;
+      load();
+    });
+    return () => {
+      cancel = true;
+      unsubscribe();
+    };
   }, [navigator]);
 
   return (

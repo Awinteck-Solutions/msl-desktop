@@ -18,6 +18,7 @@ import { MslAiProvider } from "./Context/MslAiContext";
 import { ExamPrepAccessProvider } from "./Context/ExamPrepAccessContext";
 import { SidebarProvider } from "./Context/SidebarContext";
 import MslAiFab from "./Components/MslAi/MslAiFab";
+import { GenerationProvider } from "./Components/MslAi/GenerationActivity";
 import {
   PastQuestionsRouteGuard,
   SubscriptionRouteGuard,
@@ -32,6 +33,7 @@ function App() {
       <SidebarProvider>
       <ExamPrepAccessProvider>
       <MslAiProvider>
+      <GenerationProvider>
       <Routes>  
         <Route path="/login" element={<Login />} />
         <Route path="/" element={<Dashboard />} />
@@ -84,6 +86,7 @@ function App() {
 
       </Routes>
       <MslAiFab />
+      </GenerationProvider>
       </MslAiProvider>
       </ExamPrepAccessProvider>
       </SidebarProvider>

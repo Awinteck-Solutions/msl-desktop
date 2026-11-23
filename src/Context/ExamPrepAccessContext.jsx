@@ -13,11 +13,8 @@ import { fetchSubscriptionStatus } from "../Services/SubscriptionApi";
 
 const ExamPrepAccessContext = createContext(null);
 
-export function computeExamPrepVisibility(hasEnrollment, hasSubscription) {
-  const showPastQuestions = hasEnrollment || hasSubscription;
-  /** Subscriber library + FAB: any active subscription, including enrolled students. */
-  const showAiSubscription = hasSubscription;
-  return { showPastQuestions, showAiSubscription };
+export function computeExamPrepVisibility() {
+  return { showPastQuestions: true, showAiSubscription: true };
 }
 
 export function ExamPrepAccessProvider({ children }) {
@@ -51,8 +48,8 @@ export function ExamPrepAccessProvider({ children }) {
   }, [refresh, location.pathname]);
 
   const { showPastQuestions, showAiSubscription } = useMemo(
-    () => computeExamPrepVisibility(hasEnrollment, hasSubscription),
-    [hasEnrollment, hasSubscription]
+    () => computeExamPrepVisibility(),
+    []
   );
 
   const value = useMemo(

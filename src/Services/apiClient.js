@@ -1,5 +1,6 @@
 import axios from "axios";
 import apiEndpoints from "./apiConfig";
+import { attachResponseCache } from "./responseCache";
 import {
   clearSession,
   getDeviceIdForSession,
@@ -14,6 +15,15 @@ export const publicClient = axios.create({
 export const apiClient = axios.create({
   baseURL: apiEndpoints.baseUrl,
 });
+
+function cacheScope() {
+  const user = getStoredUser();
+  const id = user?._id || user?.id || user?.userId;
+  return id ? String(id) : null;
+}
+
+attachResponseCache(apiClient, cacheScope);
+attachResponseCache(publicClient, cacheScope);
 
 function buildAuthHeaders() {
   const user = getStoredUser();

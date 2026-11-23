@@ -55,7 +55,7 @@ export function PastQuestionSimilarPeers({
                   </span>
                   <div className="flex flex-wrap items-center gap-1 shrink-0">
                     <IconAction
-                      label={open ? "Hide preview" : "Preview question"}
+                      label={open ? "Hide full question" : "Show full question"}
                       pressed={open}
                       onClick={() => togglePreview(id)}
                     >
@@ -86,21 +86,19 @@ export function PastQuestionSimilarPeers({
                     }}
                   />
                 </div>
-                <div
-                  className={`grid transition-all duration-200 ease-out ${
-                    open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-                  }`}
-                >
-                  <div className="overflow-hidden">
-                    <div className="border-t border-msl-border/60 px-3 pb-3 pt-2 text-sm">
-                      <PastQuestionExamText text={q.question} html={q.questionHtml} />
-                      <PastQuestionAnswerBlock
-                        label="Suggested answer"
-                        text={q.answer}
-                        html={q.answerHtml}
-                      />
-                    </div>
-                  </div>
+                <div className="border-t border-msl-border/60 px-3 pb-3 pt-2 text-sm">
+                  <PastQuestionExamText
+                    text={q.question}
+                    html={q.questionHtml}
+                    className={open ? "" : "line-clamp-4"}
+                  />
+                  {open ? (
+                    <PastQuestionAnswerBlock
+                      label="Suggested answer"
+                      text={q.answer}
+                      html={q.answerHtml}
+                    />
+                  ) : null}
                 </div>
               </div>
             </li>

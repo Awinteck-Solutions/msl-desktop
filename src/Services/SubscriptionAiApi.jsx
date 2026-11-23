@@ -52,44 +52,79 @@ export const getSubscriptionRecentActivity = async (params = {}) => {
   return { status: false, response: response.data };
 };
 
-export const subscriptionSummarize = async (payload) => {
-  const response = await fetch(apiEndpoints.subscriptionAiSummarize, {
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function pollGeneration(jobId) {
+  const deadline = Date.now() + 3 * 60 * 1000;
+  while (Date.now() < deadline) {
+    await sleep(2000);
+    const response = await fetch(
+      `${apiEndpoints.subscriptionAiGenerationStatus}?jobId=${encodeURIComponent(jobId)}`,
+      { headers: jsonHeaders() }
+    );
+    const data = await response.json().catch(() => ({}));
+    const job = data?.response;
+    if (job?.status === "ready") {
+      return {
+        status: true,
+        response: { success: true, message: job.message, response: job.result },
+      };
+    }
+    if (job?.status === "failed") {
+      return { status: false, message: job.error || job.message, response: data };
+    }
+  }
+  return {
+    status: false,
+    message: "Still generating. Open recent activity to check again.",
+  };
+}
+
+async function beginJob(url, payload) {
+  const response = await fetch(url, {
     method: "POST",
     headers: jsonHeaders(),
     body: JSON.stringify(payload),
   });
   const data = await response.json().catch(() => ({}));
-  if (response.ok && data?.success !== false) {
-    return { status: true, response: data };
-  }
+  if (data?.jobId && data?.status === "processing") return { status: true, jobId: data.jobId };
+  if (response.ok && data?.success !== false) return { status: true, immediate: data };
+  return { status: false, message: data?.message || "Could not start generation" };
+}
+
+async function startGeneration(url, payload) {
+  const started = await beginJob(url, payload);
+  if (started.jobId) return pollGeneration(started.jobId);
+  if (started.immediate) return { status: true, response: started.immediate };
+  return { status: false, message: started.message };
+}
+
+export const beginSubscriptionSummarize = (payload) =>
+  beginJob(apiEndpoints.subscriptionAiSummarize, payload);
+export const beginSubscriptionFlashcards = (payload) =>
+  beginJob(apiEndpoints.subscriptionAiGenerateFlashcards, payload);
+export const beginSubscriptionQuiz = (payload) =>
+  beginJob(apiEndpoints.subscriptionAiGenerateQuiz, payload);
+
+export const getSubscriptionGenerationStatus = async (params = {}) => {
+  const query = new URLSearchParams(params).toString();
+  const response = await fetch(
+    `${apiEndpoints.subscriptionAiGenerationStatus}${query ? `?${query}` : ""}`,
+    { headers: jsonHeaders() }
+  );
+  const data = await response.json().catch(() => ({}));
+  if (response.ok && data?.success !== false) return { status: true, response: data };
   return { status: false, response: data, message: data?.message };
 };
 
-export const subscriptionGenerateFlashcards = async (payload) => {
-  const response = await fetch(apiEndpoints.subscriptionAiGenerateFlashcards, {
-    method: "POST",
-    headers: jsonHeaders(),
-    body: JSON.stringify(payload),
-  });
-  const data = await response.json().catch(() => ({}));
-  if (response.ok && data?.success !== false) {
-    return { status: true, response: data };
-  }
-  return { status: false, response: data, message: data?.message };
-};
+export const subscriptionSummarize = async (payload) =>
+  startGeneration(apiEndpoints.subscriptionAiSummarize, payload);
 
-export const subscriptionGenerateQuiz = async (payload) => {
-  const response = await fetch(apiEndpoints.subscriptionAiGenerateQuiz, {
-    method: "POST",
-    headers: jsonHeaders(),
-    body: JSON.stringify(payload),
-  });
-  const data = await response.json().catch(() => ({}));
-  if (response.ok && data?.success !== false) {
-    return { status: true, response: data };
-  }
-  return { status: false, response: data, message: data?.message };
-};
+export const subscriptionGenerateFlashcards = (payload) =>
+  startGeneration(apiEndpoints.subscriptionAiGenerateFlashcards, payload);
+
+export const subscriptionGenerateQuiz = (payload) =>
+  startGeneration(apiEndpoints.subscriptionAiGenerateQuiz, payload);
 
 export const streamSubscriptionContextChat = async ({
   payload,
@@ -201,3 +236,8 @@ export const subscriptionVoiceToText = async (audioBlob, languageCode = "en-US")
   }
   return { status: false, message: data?.message || "Transcription failed" };
 };
+
+export async function listSubscriptionTtsVoices() {
+  const response = await apiClient.get(apiEndpoints.subscriptionAiVoices);
+  return response.data?.response ?? [];
+}

@@ -1,7 +1,8 @@
 const DEFAULTS = {
-  minBufferChunks: 2,
-  minBufferMs: 2500,
-  maxInitialWaitMs: 5000,
+  // Hold briefly so the first TTS phrase can land while text types out.
+  minBufferChunks: 1,
+  minBufferMs: 420,
+  maxInitialWaitMs: 1600,
 };
 
 function decodeBase64ToArrayBuffer(base64) {
@@ -24,6 +25,23 @@ export function createSequentialAudioPlayer(options = {}) {
   let scheduledTime = 0;
   let bufferTimer = null;
   let activeSources = [];
+  let idleTimer = null;
+  let stopped = false;
+
+  const notifyIdle = () => {
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => {
+      idleTimer = null;
+      if (
+        !stopped &&
+        !activeSources.length &&
+        !segments.size &&
+        !isScheduling
+      ) {
+        config.onIdle?.();
+      }
+    }, 120);
+  };
 
   const getContext = () => {
     if (!audioContext || audioContext.state === "closed") {
@@ -48,6 +66,11 @@ export function createSequentialAudioPlayer(options = {}) {
   const canStartPlayback = () => {
     if (playbackStarted) return true;
     if (!firstEnqueueAt) return false;
+
+    // One completed final reply — play immediately (avoids a long mute then a clicky start).
+    if (isSegmentReady(0) && segments.get(0)?.complete && completedSegmentCount() === 1) {
+      return true;
+    }
 
     if (completedSegmentCount() >= config.minBufferChunks) return true;
     if (isSegmentReady(0) && Date.now() - firstEnqueueAt >= config.minBufferMs) {
@@ -83,8 +106,9 @@ export function createSequentialAudioPlayer(options = {}) {
         await ctx.resume();
       }
 
-      if (scheduledTime < ctx.currentTime) {
-        scheduledTime = ctx.currentTime + 0.08;
+      // Keep a tiny lead-in so decode jitter does not force a restart gap/click.
+      if (scheduledTime < ctx.currentTime + 0.04) {
+        scheduledTime = ctx.currentTime + 0.04;
       }
 
       while (isSegmentReady(nextPlayIndex)) {
@@ -94,12 +118,21 @@ export function createSequentialAudioPlayer(options = {}) {
             const arrayBuffer = decodeBase64ToArrayBuffer(part.audio);
             const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
             const source = ctx.createBufferSource();
+            // Soften chunk edges so spliced PCM/WAV pieces do not scratch.
+            const gain = ctx.createGain();
+            const fade = Math.min(0.012, Math.max(0.004, audioBuffer.duration / 8));
+            gain.gain.setValueAtTime(0, scheduledTime);
+            gain.gain.linearRampToValueAtTime(1, scheduledTime + fade);
+            gain.gain.setValueAtTime(1, Math.max(scheduledTime + fade, scheduledTime + audioBuffer.duration - fade));
+            gain.gain.linearRampToValueAtTime(0.0001, scheduledTime + audioBuffer.duration);
             source.buffer = audioBuffer;
-            source.connect(ctx.destination);
+            source.connect(gain);
+            gain.connect(ctx.destination);
             source.start(scheduledTime);
             activeSources.push(source);
             source.onended = () => {
               activeSources = activeSources.filter((s) => s !== source);
+              notifyIdle();
             };
             scheduledTime += audioBuffer.duration;
           } catch {
@@ -120,6 +153,7 @@ export function createSequentialAudioPlayer(options = {}) {
   return {
     enqueue({ chunkIndex = 0, audio, mimeType, isFinal }) {
       if (!audio) return;
+      stopped = false;
       if (!firstEnqueueAt) firstEnqueueAt = Date.now();
 
       const index = Number.isFinite(chunkIndex) ? chunkIndex : 0;
@@ -134,9 +168,14 @@ export function createSequentialAudioPlayer(options = {}) {
       if (!playbackStarted) scheduleBufferCheck();
     },
     stop() {
+      stopped = true;
       if (bufferTimer) {
         clearTimeout(bufferTimer);
         bufferTimer = null;
+      }
+      if (idleTimer) {
+        clearTimeout(idleTimer);
+        idleTimer = null;
       }
       activeSources.forEach((source) => {
         try {
@@ -159,6 +198,7 @@ export function createSequentialAudioPlayer(options = {}) {
     },
     reset() {
       this.stop();
+      stopped = false;
     },
   };
 }

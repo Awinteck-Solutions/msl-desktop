@@ -1,6 +1,7 @@
 import { apiClient } from "./apiClient";
 import apiEndpoints from "./apiConfig";
 import { capitalizeDifficulty } from "../utils/quizHelpers";
+import { invalidateResponseCache } from "./responseCache";
 
 export const coursesWithQuizzes = async (page = 1, limit = 10000) => {
   const response = await apiClient.get(apiEndpoints.userCoursesWithQuizzes, {
@@ -47,6 +48,9 @@ export const submitQuizResponse = async (payload) => {
     payload
   );
   if (response.status === 200 || response.status === 201) {
+    invalidateResponseCache("/v2/quiz");
+    invalidateResponseCache("/v2/course/user-with-quizzes");
+    invalidateResponseCache("/v2/gamification");
     return { status: true, response: response.data };
   }
   return { status: false, response: response.data };
@@ -58,6 +62,9 @@ export const updateQuizResponse = async (payload) => {
     payload
   );
   if (response.status === 200 || response.status === 201) {
+    invalidateResponseCache("/v2/quiz");
+    invalidateResponseCache("/v2/course/user-with-quizzes");
+    invalidateResponseCache("/v2/gamification");
     return { status: true, response: response.data };
   }
   return { status: false, response: response.data };

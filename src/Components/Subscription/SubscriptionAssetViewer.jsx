@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Progress } from "@chakra-ui/react";
 import { Viewer, Worker } from "@react-pdf-viewer/core";
 import { zoomPlugin } from "@react-pdf-viewer/zoom";
@@ -6,6 +6,7 @@ import { fullScreenPlugin } from "@react-pdf-viewer/full-screen";
 import "@react-pdf-viewer/core/lib/styles/index.css";
 import "@react-pdf-viewer/default-layout/lib/styles/index.css";
 import { subscriptionFileKind } from "../../utils/subscriptionDisplay";
+import VideoChapters from "../Media/VideoChapters";
 
 const WORKER_URL =
   "https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js";
@@ -14,6 +15,7 @@ const viewerShellClass =
   "select-none subscription-asset-viewer";
 
 export default function SubscriptionAssetViewer({ file, fileUrl, title }) {
+  const videoRef = useRef(null);
   const [pageCount, setPageCount] = useState(0);
   const [pdfError, setPdfError] = useState(false);
   const kind = subscriptionFileKind(file);
@@ -82,6 +84,7 @@ export default function SubscriptionAssetViewer({ file, fileUrl, title }) {
         onContextMenu={blockContextMenu}
       >
         <video
+          ref={videoRef}
           key={fileUrl}
           src={fileUrl}
           controls
@@ -92,6 +95,19 @@ export default function SubscriptionAssetViewer({ file, fileUrl, title }) {
         >
           <track kind="captions" />
         </video>
+        <VideoChapters
+          markers={file?.timestamps}
+          onSeek={(seconds) => {
+            const node = videoRef.current;
+            if (!node) return;
+            const apply = () => {
+              node.currentTime = seconds;
+              node.play?.().catch(() => {});
+            };
+            if (node.readyState >= 1) apply();
+            else node.addEventListener("loadedmetadata", apply, { once: true });
+          }}
+        />
         <p className="text-xs text-msl-muted mt-3">
           Preview only — downloading is disabled in the desktop app.
         </p>

@@ -35,8 +35,11 @@ import { mediaUrl } from "../Services/apiConfig";
 import {
   fetchPastQuestionPaper,
   fetchPastQuestionPaperInsights,
+  fetchPastQuestionAiQuota,
+  fetchPastQuestionHistory,
   fetchPastQuestionTree,
   pastQuestionChat,
+  pastQuestionChatAudioStream,
 } from "../Services/PastQuestionApi";
 import {
   countFilteredPapers,
@@ -48,12 +51,40 @@ import {
 import { plainTextFromHtml } from "../utils/aiHtmlContent";
 import { idOf } from "../utils/id";
 import { scrollToQuestionElement } from "../utils/pastQuestionScroll";
+import { rememberPastPaper, readRecentPapers } from "../utils/recentPastPapers";
+import CornerNotices, { useQuotaNote } from "../Components/UI/BackgroundLoadNotice";
+
+function historyToMessages(items) {
+  if (!Array.isArray(items)) return [];
+  return items
+    .flatMap((item) => [
+      { role: "user", text: item.question || "" },
+      { role: "ai", html: item.answer || "" },
+    ])
+    .filter((item) => item.text || item.html);
+}
+
+function messageSignature(message) {
+  return `${message.role}:${message.text || message.html || ""}`;
+}
+
+function mergeHistory(current, prior) {
+  if (!prior.length) return current;
+  if (!current.length) return prior;
+  const currentSig = current.map(messageSignature).join("\n");
+  const priorSig = prior.map(messageSignature).join("\n");
+  if (currentSig === priorSig || currentSig.startsWith(`${priorSig}\n`)) return current;
+  if (priorSig.startsWith(currentSig)) return prior;
+  return [...prior, ...current];
+}
 
 export default function PastQuestions() {
   const { paperId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const toast = useToast();
+  const { note: quotaNote, showQuota } = useQuotaNote();
+  const historyPaperRef = useRef("");
 
   const [treeLoading, setTreeLoading] = useState(true);
   const [tree, setTree] = useState([]);
@@ -73,6 +104,9 @@ export default function PastQuestions() {
   const [insights, setInsights] = useState(null);
   const [readerView, setReaderView] = useState("questions");
   const [chatOpen, setChatOpen] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [aiQuota, setAiQuota] = useState(null);
+  const [recentPapers, setRecentPapers] = useState(() => readRecentPapers());
   const [highlightId, setHighlightId] = useState("");
   const [focusTopic, setFocusTopic] = useState("");
   const [courseQuestions, setCourseQuestions] = useState([]);
@@ -160,7 +194,10 @@ export default function PastQuestions() {
       setPaperLoading(true);
       setPaper(null);
       setInsights(null);
-      setMessages([]);
+      if (historyPaperRef.current !== String(id)) {
+        historyPaperRef.current = String(id);
+        setMessages([]);
+      }
       const pendingAsk = pendingChatAskRef.current;
       const keepPendingAsk =
         pendingAsk && String(pendingAsk.paperId) === String(id);
@@ -210,14 +247,21 @@ export default function PastQuestions() {
         fetchPastQuestionPaperInsights(id),
       ]);
 
+      setHistoryLoading(true);
       if (paperRes.ok) {
         setPaper(paperRes.paper);
+        setRecentPapers(rememberPastPaper(paperRes.paper));
         setCourseQuestions(withQuestionSource(paperRes.paper));
       } else {
         toast({ title: paperRes.message, status: "error", duration: 5000 });
         if (paperRes.forbidden) navigate("/past-questions", { replace: true });
       }
       if (insightRes.ok) setInsights(insightRes.insights);
+      const historyRes = await fetchPastQuestionHistory(id);
+      if (historyPaperRef.current === String(id) && historyRes.ok) {
+        setMessages((current) => mergeHistory(current, historyToMessages(historyRes.items)));
+      }
+      setHistoryLoading(false);
       setPaperLoading(false);
     },
     [navigate, toast]
@@ -337,6 +381,7 @@ export default function PastQuestions() {
 
   const openPaper = (summary, scrollToQuestionId) => {
     const id = summary._id;
+    setRecentPapers(rememberPastPaper(summary));
     if (scrollToQuestionId) {
       scrollIntentRef.current = {
         questionId: scrollToQuestionId,
@@ -359,6 +404,18 @@ export default function PastQuestions() {
       return;
     }
     setChatOpen(true);
+    setHistoryLoading(true);
+    const paperKey = String(paper._id);
+    Promise.all([
+      fetchPastQuestionAiQuota(),
+      fetchPastQuestionHistory(paperKey),
+    ]).then(([quotaResult, historyResult]) => {
+      if (quotaResult.ok) setAiQuota(quotaResult.quota);
+      if (historyPaperRef.current === paperKey && historyResult.ok) {
+        setMessages((current) => mergeHistory(current, historyToMessages(historyResult.items)));
+      }
+      setHistoryLoading(false);
+    });
   };
 
   const askAbout = (item) => {
@@ -443,7 +500,7 @@ export default function PastQuestions() {
     }
   };
 
-  const sendChat = async (overrideText) => {
+  const sendChat = async (overrideText, options = {}) => {
     const question = (overrideText ?? chatInput).trim();
     if (!question || !paper?._id || chatBusy) return null;
 
@@ -481,24 +538,99 @@ export default function PastQuestions() {
     }
 
     setMessages((prev) => [...prev, { role: "user", text: question }]);
-    if (!overrideText) setChatInput("");
+    setChatInput("");
 
-    const result = await pastQuestionChat(body);
-    setChatBusy(false);
+    const { useAudio = false, voiceId = "", signal, onAudio } = options;
 
-    if (!result.ok) {
-      toast({ title: result.message, status: "error", duration: 5000 });
-      setMessages((prev) => prev.slice(0, -1));
+    try {
+      if (useAudio) {
+        if (voiceId) body.voiceId = voiceId;
+        let answer = "";
+        const setAssistant = (text, { replace = false, streaming = true } = {}) => {
+          answer = replace ? text : `${answer}${text}`;
+          setMessages((prev) => {
+            const copy = [...prev];
+            const last = copy[copy.length - 1];
+            if (last?.role === "ai") {
+              copy[copy.length - 1] = { role: "ai", html: answer, streaming };
+              return copy;
+            }
+            return [...copy, { role: "ai", html: answer, streaming }];
+          });
+        };
+        await pastQuestionChatAudioStream({
+          payload: body,
+          signal,
+          onText: (data) => {
+            if (data?.limitInfo) {
+              setAiQuota(data.limitInfo);
+              showQuota(data.limitInfo);
+            }
+            if (data?.finished) {
+              if (data?.text) setAssistant(data.text, { replace: true, streaming: false });
+              else setAssistant(answer, { replace: true, streaming: false });
+              return;
+            }
+            if (data?.text) setAssistant(data.text, { streaming: true });
+          },
+          onAudio: (data) => onAudio?.(data),
+          onError: (err) => {
+            if (!signal?.aborted) {
+              toast({
+                title: err?.message || "Audio reply failed",
+                status: "error",
+                duration: 5000,
+              });
+            }
+          },
+        });
+        return answer || null;
+      }
+
+      const result = await pastQuestionChat(body);
+      if (!result.ok) {
+        toast({ title: result.message, status: "error", duration: 5000 });
+        setChatInput(question);
+        setMessages((prev) => prev.slice(0, -1));
+        return null;
+      }
+
+      const answer = result.data?.answer || "";
+      if (result.data?.limitInfo) {
+        setAiQuota(result.data.limitInfo);
+        showQuota(result.data.limitInfo);
+      }
+      setMessages((prev) => [...prev, { role: "ai", html: answer }]);
+      return answer;
+    } catch (error) {
+      if (!options.signal?.aborted) {
+        toast({
+          title: error?.message || "Chat failed",
+          status: "error",
+          duration: 5000,
+        });
+        setChatInput(question);
+        setMessages((prev) => {
+          const copy = [...prev];
+          if (copy[copy.length - 1]?.role === "ai") copy.pop();
+          if (copy[copy.length - 1]?.role === "user") copy.pop();
+          return copy;
+        });
+      }
       return null;
+    } finally {
+      setChatBusy(false);
     }
-
-    const answer = result.data?.answer || "";
-    setMessages((prev) => [...prev, { role: "ai", html: answer }]);
-    return answer;
   };
 
   const pdfUrl = paper?.fileUrl || (paper?.fileKey ? mediaUrl(paper.fileKey) : "");
   const topicRows = topicFrequency?.topics || [];
+  const loadingLabel =
+    paper && !paperLoading && compareBusy
+      ? "Loading related questions"
+      : paper && !paperLoading && treeLoading
+        ? "Loading sources"
+        : "";
 
   const chatModal = (
     <>
@@ -517,13 +649,17 @@ export default function PastQuestions() {
         messages={messages}
         input={chatInput}
         onInputChange={setChatInput}
-        onSend={(text) => sendChat(text)}
+        onSend={sendChat}
         busy={chatBusy}
+        historyLoading={historyLoading}
         onClearQuestionContext={() => {
           setQuestionId("");
           setScope("paper");
         }}
         contextQuestions={courseQuestions}
+        quota={aiQuota}
+        loadingLabel={loadingLabel}
+        quotaNote={quotaNote}
       />
     </>
   );
@@ -566,14 +702,25 @@ export default function PastQuestions() {
             ) : (
               <>
                 <header className="shrink-0 px-5 py-4 border-b border-msl-border bg-msl-surface">
-                  <h2 className="font-display text-lg font-semibold text-msl-text">
-                    {paper.title}
-                  </h2>
-                  <p className="text-xs text-msl-muted mt-0.5">
-                    {[paper.sitting, paper.year, paper.level, paper.paperCode]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </p>
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <h2 className="font-display text-lg font-semibold text-msl-text">
+                        {displayPaperTitle(paper.title)}
+                      </h2>
+                      <p className="text-xs text-msl-muted mt-0.5">
+                        {[paper.sitting, paper.year, paper.level, paper.paperCode]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                    </div>
+                    {chatOpen ? null : (
+                      <CornerNotices
+                        className="shrink-0"
+                        loadingLabel={loadingLabel}
+                        quotaNote={quotaNote}
+                      />
+                    )}
+                  </div>
                   <div className="flex flex-wrap items-center gap-2 mt-3">
                     <ViewTab
                       active={readerView === "questions"}
@@ -614,7 +761,7 @@ export default function PastQuestions() {
 
                 <div className="flex-1 min-h-0 overflow-y-auto">
                   {readerView === "pdf" ? (
-                    <PastQuestionPdfViewer fileUrl={pdfUrl} title={paper.title} />
+                    <PastQuestionPdfViewer fileUrl={pdfUrl} title={displayPaperTitle(paper.title)} />
                   ) : readerView === "topics" ? (
                     <PastQuestionTopicsTab
                       paper={paper}
@@ -679,6 +826,7 @@ export default function PastQuestions() {
         <PastQuestionBrowseSkeleton />
       ) : (
         <div className="max-w-3xl space-y-4">
+          <RecentPapers papers={recentPapers} onOpenPaper={openPaper} />
           <PastQuestionSourceFilters
             filters={sourceFilters}
             onChange={setSourceFilters}
@@ -740,8 +888,24 @@ function QuestionsTab({
       })
     : all;
 
+  const hasBackground = Boolean(
+    String(paper?.backgroundHtml || "").trim() ||
+      String(paper?.backgroundText || "").trim()
+  );
+
   return (
     <div className="px-5 py-4 max-w-3xl">
+      {hasBackground ? (
+        <section className="mb-5 rounded-msl border border-brand/20 bg-brand/[0.04] p-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-brand mb-2">
+            Additional / background / pre-seen material
+          </h3>
+          <PastQuestionExamText
+            text={paper.backgroundText}
+            html={paper.backgroundHtml}
+          />
+        </section>
+      ) : null}
       <PastQuestionQuestionFilters
         value={questionQuery}
         onChange={onQuestionQueryChange}
@@ -905,7 +1069,7 @@ function SourcesPane({
                               className="w-full text-left rounded-xl px-3 py-2 hover:bg-brand/5 transition-colors"
                             >
                               <p className="text-sm font-semibold text-msl-text line-clamp-2">
-                                {group.title}
+                                {displayPaperTitle(group.title)}
                               </p>
                               <p className="text-[10px] text-msl-muted mt-0.5">
                                 {[group.paperCode, `${group.papers.length} sittings`]
@@ -943,6 +1107,33 @@ function SourcesPane({
         )}
       </div>
     </aside>
+  );
+}
+
+function RecentPapers({ papers, onOpenPaper }) {
+  if (!papers.length) return null;
+  return (
+    <section className="rounded-msl border border-msl-border bg-msl-surface p-4">
+      <h2 className="text-xs font-semibold uppercase tracking-widest text-msl-muted">Recent papers</h2>
+      <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {papers.map((item) => (
+          <li key={item._id}>
+            <button
+              type="button"
+              onClick={() => onOpenPaper(item)}
+              className="w-full rounded-lg border border-msl-border px-3 py-2.5 text-left hover:border-brand/40 hover:bg-brand/5"
+            >
+              <p className="text-sm font-medium text-msl-text line-clamp-2">
+                {displayPaperTitle(item.title) || item.sitting || "Past paper"}
+              </p>
+              <p className="mt-0.5 text-xs text-msl-muted line-clamp-1">
+                {[item.sitting, item.year, item.level, item.paperCode].filter(Boolean).join(" · ")}
+              </p>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -1000,7 +1191,9 @@ function BrowseWelcome({ sourceTree, openGroup, onOpenGroup, onOpenPaper, search
                             onClick={() => onOpenGroup(open ? "" : compositeKey)}
                             className="w-full text-left px-4 py-3 hover:bg-brand/5"
                           >
-                            <p className="font-medium text-msl-text">{group.title}</p>
+                            <p className="font-medium text-msl-text">
+                              {displayPaperTitle(group.title)}
+                            </p>
                             <p className="text-xs text-msl-muted mt-0.5">
                               {[group.paperCode, `${group.papers.length} sittings`]
                                 .filter(Boolean)
@@ -1041,6 +1234,14 @@ function BrowseWelcome({ sourceTree, openGroup, onOpenGroup, onOpenPaper, search
   );
 }
 
+function displayPaperTitle(title) {
+  return String(title || "")
+    .replace(/\s+Solutions?\s*$/i, "")
+    .replace(/\s+Paper\s*$/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function PaperInsightBlock({ title, insight }) {
   if (!insight) {
     return <p className="text-xs text-msl-muted">{title}: not available yet.</p>;
@@ -1052,10 +1253,12 @@ function PaperInsightBlock({ title, insight }) {
     <div className="rounded-xl border border-msl-border bg-msl-surface p-4">
       <h4 className="text-sm font-semibold text-msl-text mb-2">{title}</h4>
       {insight.summary ? (
-        <p className="text-sm text-msl-muted leading-relaxed mb-3">{insight.summary}</p>
+        <p className="mb-3 text-sm font-medium leading-relaxed text-msl-text [color:var(--msl-ink,#0f1222)] dark:[color:var(--msl-ink,#e8eaf2)]">
+          {insight.summary}
+        </p>
       ) : null}
       {(insight.repeatedQuestions || []).slice(0, 3).map((item) => (
-        <p key={item.theme} className="text-xs text-msl-muted mb-1">
+        <p key={item.theme} className="text-xs text-msl-text/80 mb-1">
           {item.theme}
           {item.count != null ? ` · ${item.count}×` : ""}
         </p>

@@ -14,8 +14,8 @@ function SimilarSide({ q, onOpenSitting, onAskAbout }) {
         </span>
         <button
           type="button"
-          title={open ? "Hide preview" : "Preview question"}
-          aria-label={open ? "Hide preview" : "Preview question"}
+          title={open ? "Hide full question" : "Show full question"}
+          aria-label={open ? "Hide full question" : "Show full question"}
           aria-pressed={open}
           onClick={() => setOpen((v) => !v)}
           className={`p-1.5 rounded-lg border transition-colors ${
@@ -51,19 +51,12 @@ function SimilarSide({ q, onOpenSitting, onAskAbout }) {
           <Sparkles className="w-4 h-4" />
         </button>
       </div>
-      <div
-        className={`grid transition-all duration-200 ease-out ${
-          open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-70"
-        }`}
-      >
-        <div className="overflow-hidden">
-          <div className={`text-sm ${open ? "" : "max-h-28 relative"}`}>
-            <PastQuestionExamText text={q.question} html={q.questionHtml} />
-            {!open ? (
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-msl-bg/90 to-transparent" />
-            ) : null}
-          </div>
-        </div>
+      <div className="text-sm">
+        <PastQuestionExamText
+          text={q.question}
+          html={q.questionHtml}
+          className={open ? "" : "line-clamp-4"}
+        />
       </div>
       {!open ? (
         <button

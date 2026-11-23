@@ -1,52 +1,37 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useToast } from "@chakra-ui/react";
 import { FileText, Loader2, Sparkles } from "lucide-react";
 import AiPanelShell from "../AiPanelShell";
 import AiGenerateScopePicker from "../AiGenerateScopePicker";
-import AiHtmlContent from "../AiHtmlContent";
 import GradientButton from "../../UI/GradientButton";
 import { useMslAi } from "../../../Context/MslAiContext";
-import {
-  buildScopePayload,
-  hasAiScope,
-  summarize,
-} from "../../../Services/GeminiApi";
+import { buildScopePayload, hasAiScope } from "../../../Services/GeminiApi";
 import SubscriptionAiScopePicker from "../SubscriptionAiScopePicker";
-import {
-  buildSubscriptionScopePayload,
-  subscriptionSummarize,
-} from "../../../Services/SubscriptionAiApi";
+import { buildSubscriptionScopePayload } from "../../../Services/SubscriptionAiApi";
+import { useGenerationActivity } from "../GenerationActivity";
 
 export default function AiSummarizePanel({ isOpen, onClose, onBack, variant = "course" }) {
   const isSubscription = variant === "subscription";
   const toast = useToast();
   const { scope } = useMslAi();
-  const [loading, setLoading] = useState(false);
-  const [summary, setSummary] = useState("");
-
-  useEffect(() => {
-    if (!isOpen) {
-      setSummary("");
-      setLoading(false);
-    }
-  }, [isOpen]);
+  const { begin } = useGenerationActivity();
+  const [starting, setStarting] = useState(false);
 
   const handleSummarize = async () => {
     if (!isSubscription && !hasAiScope(scope)) {
       toast({ title: "Select a content source first", status: "warning" });
       return;
     }
-    setLoading(true);
-    setSummary("");
-    const res = isSubscription
-      ? await subscriptionSummarize(buildSubscriptionScopePayload(scope))
-      : await summarize(buildScopePayload(scope));
-    setLoading(false);
-    if (res.status) {
-      setSummary(res.response?.response?.summary || "");
-    } else {
-      toast({ title: res.message || "Summarize failed", status: "error" });
-    }
+    setStarting(true);
+    const res = await begin({
+      kind: "summarize",
+      label: scope.label || "Summary",
+      variant: isSubscription ? "subscription" : "course",
+      payload: isSubscription ? buildSubscriptionScopePayload(scope) : buildScopePayload(scope),
+    });
+    setStarting(false);
+    if (res.status) onClose();
+    else toast({ title: res.message || "Summarize failed", status: "error" });
   };
 
   return (
@@ -74,13 +59,13 @@ export default function AiSummarizePanel({ isOpen, onClose, onBack, variant = "c
 
         <GradientButton
           onClick={handleSummarize}
-          disabled={loading || (!isSubscription && !hasAiScope(scope))}
+          disabled={starting || (!isSubscription && !hasAiScope(scope))}
           className="w-full"
         >
-          {loading ? (
+          {starting ? (
             <span className="inline-flex items-center gap-2">
               <Loader2 className="w-4 h-4 animate-spin" />
-              Generating…
+              Starting…
             </span>
           ) : (
             <span className="inline-flex items-center gap-2">
@@ -89,12 +74,6 @@ export default function AiSummarizePanel({ isOpen, onClose, onBack, variant = "c
             </span>
           )}
         </GradientButton>
-
-        {summary ? (
-          <div className="rounded-xl border border-msl-border bg-msl-surface p-4 sm:p-5">
-            <AiHtmlContent content={summary} />
-          </div>
-        ) : null}
       </div>
     </AiPanelShell>
   );

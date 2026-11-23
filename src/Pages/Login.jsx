@@ -14,6 +14,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { useNavigate } from "react-router-dom";
 import { currentVersion } from "../version";
 import { clearSession, getOrCreateDeviceId, setStoredUser } from "../Services/session";
+import { cachedImageSrc } from "../Services/apiConfig";
 
 const Login = () => {
   const navigator = useNavigate();
@@ -104,7 +105,7 @@ const Login = () => {
           <div className="msl-card-elevated p-8 text-center">
             <img
               className="w-28 mx-auto object-contain"
-              src="https://mslelearning.com/mslogo.png"
+              src={cachedImageSrc("https://mslelearning.com/mslogo.png")}
               alt="MSL"
             />
             <h1 className="text-2xl font-bold text-msl-text mt-6">Welcome back</h1>
